@@ -59,7 +59,7 @@ public sealed class XSpaceNotificationListener : NotificationListenerService
             var manager = new ConfigManager(configPath);
             await manager.LoadAsync().ConfigureAwait(false);
             var config = manager.Current;
-            var dedupeMinutes = Math.Clamp(config.DedupeMinutes <= 0 ? 5 : config.DedupeMinutes, 1, 30);
+            var dedupeMinutes = Math.Clamp(config.Options.DedupeMinutes <= 0 ? 5 : config.Options.DedupeMinutes, 1, 30);
 
             var dedupeKey = BuildDedupeKey(sbn);
             if (IsDuplicate(dedupeKey, dedupeMinutes))

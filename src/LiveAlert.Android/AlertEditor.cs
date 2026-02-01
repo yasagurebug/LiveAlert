@@ -151,9 +151,14 @@ public sealed class AlertEditor : INotifyPropertyChanged
 
     public static AlertEditor FromConfig(AlertConfig config)
     {
+        var service = NormalizeService(config.Service);
+        var message = string.IsNullOrWhiteSpace(config.Message)
+            ? (service == "x_space" ? DefaultMessageSpace : DefaultMessageYoutube)
+            : config.Message;
+
         return new AlertEditor
         {
-            Service = string.IsNullOrWhiteSpace(config.Service) ? "youtube" : config.Service,
+            Service = service,
             Url = config.Url,
             TitleContains = config.TitleContains,
             Label = config.Label,
@@ -161,7 +166,7 @@ public sealed class AlertEditor : INotifyPropertyChanged
             VoiceVolume = NormalizeVolume(config.VoiceVolume),
             Bgm = config.Bgm,
             BgmVolume = NormalizeVolume(config.BgmVolume),
-            Message = config.Message,
+            Message = message,
             BackgroundColor = string.IsNullOrWhiteSpace(config.Colors.Background) ? "#FF0000" : config.Colors.Background,
             TextColor = string.IsNullOrWhiteSpace(config.Colors.Text) ? "#000000" : config.Colors.Text
         };

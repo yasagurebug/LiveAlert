@@ -57,11 +57,11 @@ public static class AlertBandFactory
 
         var displayWidth = context.Resources?.DisplayMetrics?.WidthPixels ?? 0;
 
-        var emergencyTop = BuildEmergencyLayer(context, layers, displayWidth, emergencyHeight);
-        var stripeTop = BuildStripeLayer(context, layers, displayWidth, stripeHeight);
+        var emergencyTop = BuildEmergencyLayer(context, layers, displayWidth, emergencyHeight, colors);
+        var stripeTop = BuildStripeLayer(context, layers, displayWidth, stripeHeight, colors);
         var center = BuildCenterLayer(context, layers, message, colors, displayWidth, centerHeight);
-        var stripeBottom = BuildStripeLayer(context, layers, displayWidth, stripeHeight);
-        var emergencyBottom = BuildEmergencyLayer(context, layers, displayWidth, emergencyHeight);
+        var stripeBottom = BuildStripeLayer(context, layers, displayWidth, stripeHeight, colors);
+        var emergencyBottom = BuildEmergencyLayer(context, layers, displayWidth, emergencyHeight, colors);
 
         layout.AddView(emergencyTop);
         layout.AddView(stripeTop);
@@ -84,15 +84,17 @@ public static class AlertBandFactory
         layout.Layers.Clear();
     }
 
-    private static ScrollingLayerView BuildEmergencyLayer(Context context, List<ScrollingLayerView> layers, int displayWidth, int height)
+    private static ScrollingLayerView BuildEmergencyLayer(Context context, List<ScrollingLayerView> layers, int displayWidth, int height, AlertColors colors)
     {
+        var background = ParseColor(colors.Background, AColor.Red);
+        var textColor = ParseColor(colors.Text, AColor.Black);
         var (bitmap, unitWidth) = CreateTextLayerBitmap(
             context,
             text: "EMERGENCY",
             displayWidth: displayWidth,
             height: height,
-            background: AColor.Black,
-            textColor: AColor.Red,
+            background: background,
+            textColor: textColor,
             typeface: Typeface.DefaultBold ?? Typeface.Default);
 
         return CreateLayerView(context, layers, bitmap, unitWidth, EmergencyCycleSeconds, height);
@@ -115,9 +117,11 @@ public static class AlertBandFactory
         return CreateLayerView(context, layers, bitmap, unitWidth, CenterCycleSeconds, height);
     }
 
-    private static ScrollingLayerView BuildStripeLayer(Context context, List<ScrollingLayerView> layers, int displayWidth, int height)
+    private static ScrollingLayerView BuildStripeLayer(Context context, List<ScrollingLayerView> layers, int displayWidth, int height, AlertColors colors)
     {
-        var (bitmap, unitWidth) = CreateStripeTile(height);
+        var background = ParseColor(colors.Background, AColor.Red);
+        var stripe = ParseColor(colors.Text, AColor.Black);
+        var (bitmap, unitWidth) = CreateStripeTile(height, background, stripe);
         return CreateLayerView(context, layers, bitmap, unitWidth, StripeCycleSeconds, height, useShader: true, rotateShader: false, tileY: Shader.TileMode.Clamp!);
     }
 
@@ -181,14 +185,14 @@ public static class AlertBandFactory
         }
     }
 
-    private static (Bitmap Bitmap, int UnitWidthPx) CreateStripeTile(int height)
+    private static (Bitmap Bitmap, int UnitWidthPx) CreateStripeTile(int height, AColor backgroundColor, AColor stripeColor)
     {
         var stripeWidth = Math.Max(6, height / 3);
         var unitWidth = Math.Max(1, stripeWidth * 2);
         var bitmap = Bitmap.CreateBitmap(unitWidth, height, Bitmap.Config.Argb8888!);
         var pixels = new int[unitWidth * height];
-        var background = AColor.Black.ToArgb();
-        var stripe = AColor.Red.ToArgb();
+        var background = backgroundColor.ToArgb();
+        var stripe = stripeColor.ToArgb();
 
         for (var y = 0; y < height; y++)
         {

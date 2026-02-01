@@ -6,8 +6,9 @@
              Title="LiveAlert Settings"
              BackgroundColor="#000000">
     <ContentPage.Resources>
-        <ResourceDictionary>
-            <local:EqualsConverter x:Key="EqualsConverter"/>
+            <ResourceDictionary>
+                <local:EqualsConverter x:Key="EqualsConverter"/>
+                <local:ComplementColorConverter x:Key="ComplementColorConverter"/>
             <Style TargetType="Label">
                 <Setter Property="TextColor"
                         Value="White"/>
@@ -257,11 +258,24 @@
                                                 CommandParameter="{Binding .}"/>
                                     </Grid>
 
-                                    <Label Text="背景色"/>
-                                    <local:ColorPickerView SelectedColor="{Binding BackgroundColorValue}"/>
-
-                                    <Label Text="文字色"/>
-                                    <local:ColorPickerView SelectedColor="{Binding TextColorValue}"/>
+                                    <Grid ColumnDefinitions="*,*"
+                                            ColumnSpacing="8">
+                                        <Button Text="背景色"
+                                                BorderColor="White"
+                                                BorderWidth="1"
+                                                BackgroundColor="{Binding BackgroundColorValue}"
+                                                TextColor="{Binding BackgroundColorValue, Converter={StaticResource ComplementColorConverter}}"
+                                                Clicked="OnPickBackgroundColorClicked"
+                                                CommandParameter="{Binding .}"/>
+                                        <Button Grid.Column="1"
+                                                Text="文字色"
+                                                BorderColor="White"
+                                                BorderWidth="1"
+                                                BackgroundColor="{Binding TextColorValue}"
+                                                TextColor="{Binding TextColorValue, Converter={StaticResource ComplementColorConverter}}"
+                                                Clicked="OnPickTextColorClicked"
+                                                CommandParameter="{Binding .}"/>
+                                    </Grid>
 
                                     <Button Text="削除"
                                             Clicked="OnRemoveAlertClicked"
@@ -274,15 +288,22 @@
             </VerticalStackLayout>
             <Button Text="監視対象を追加"
                     Clicked="OnAddAlertClicked"/>
-
-            <Button Text="ログ出力"
-                    Clicked="OnShowLogClicked"/>
             <Button Text="権限設定"
                     Clicked="OnPermissionSettingsClicked"/>
             <Button x:Name="TestAlertButton"
                     Text="テスト発報"
                     Clicked="OnTestAlertClicked"
                     IsVisible="False"/>
+            <Button Text="ログ出力"
+                    Clicked="OnShowLogClicked"/>
+            <Button Text="設定のエクスポート"
+                    Clicked="OnExportConfigClicked"/>
+            <Button Text="設定のインポート"
+                    Clicked="OnImportConfigClicked"/>
+
+            <BoxView HeightRequest="44"
+                    Color="Transparent"/>
+
             <Button Text="このプログラムについて"
                     Clicked="OnAboutProgramClicked"/>
             <Button Text="外部ライセンス"

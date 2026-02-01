@@ -8,7 +8,8 @@ public sealed class ConfigManager
     {
         WriteIndented = true,
         ReadCommentHandling = JsonCommentHandling.Skip,
-        AllowTrailingCommas = true
+        AllowTrailingCommas = true,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
     public string ConfigPath { get; }
@@ -36,12 +37,18 @@ public sealed class ConfigManager
             .ConfigureAwait(false);
 
         Current = config ?? ConfigDefaults.CreateDefault();
+        if (Current.Options.DedupeMinutes <= 0)
+        {
+            Current.Options.DedupeMinutes = Math.Clamp(Current.LegacyDedupeMinutes <= 0 ? 5 : Current.LegacyDedupeMinutes, 1, 30);
+        }
+        Current.LegacyDedupeMinutes = 0;
         ConfigReloaded?.Invoke(Current);
     }
 
     public async Task SaveAsync(ConfigRoot config, CancellationToken cancellationToken = default)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(ConfigPath) ?? ".");
+        config.LegacyDedupeMinutes = 0;
         await using var stream = File.Create(ConfigPath);
         await JsonSerializer.SerializeAsync(stream, config, _jsonOptions, cancellationToken).ConfigureAwait(false);
         Current = config;

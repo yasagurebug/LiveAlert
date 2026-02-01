@@ -25,6 +25,7 @@ public partial class MainPage : ContentPage
     private readonly SettingsViewModel _viewModel;
     private bool _ignoreServiceToggle;
     private MediaPlayer? _previewPlayer;
+    private static readonly IReadOnlyList<Color> WebSafeColors = BuildWebSafeColors();
 
     public MainPage(SettingsViewModel viewModel)
     {
@@ -304,6 +305,154 @@ public partial class MainPage : ContentPage
         await Navigation.PushModalAsync(new NavigationPage(page));
     }
 
+    private async void OnPickBackgroundColorClicked(object sender, EventArgs e)
+    {
+        if (sender is not MauiButton button || button.CommandParameter is not AlertEditor alert)
+        {
+            return;
+        }
+
+        var selected = await ShowColorPaletteAsync(alert.BackgroundColorValue).ConfigureAwait(true);
+        if (selected is Color picked)
+        {
+            alert.BackgroundColorValue = picked;
+        }
+    }
+
+    private async void OnPickTextColorClicked(object sender, EventArgs e)
+    {
+        if (sender is not MauiButton button || button.CommandParameter is not AlertEditor alert)
+        {
+            return;
+        }
+
+        var selected = await ShowColorPaletteAsync(alert.TextColorValue).ConfigureAwait(true);
+        if (selected is Color picked)
+        {
+            alert.TextColorValue = picked;
+        }
+    }
+
+    private async Task<Color?> ShowColorPaletteAsync(Color current)
+    {
+        var tcs = new TaskCompletionSource<Color?>();
+        var grid = BuildColorGrid(current, async color =>
+        {
+            if (tcs.TrySetResult(color))
+            {
+                await Navigation.PopModalAsync().ConfigureAwait(true);
+            }
+        });
+
+        var cancelButton = new MauiButton
+        {
+            Text = "キャンセル",
+            BorderColor = Colors.White,
+            BorderWidth = 1,
+            BackgroundColor = Colors.Black,
+            TextColor = Colors.White
+        };
+        cancelButton.Clicked += async (_, _) =>
+        {
+            if (tcs.TrySetResult(null))
+            {
+                await Navigation.PopModalAsync().ConfigureAwait(true);
+            }
+        };
+
+        var page = new ContentPage
+        {
+            Title = "色を選択",
+            BackgroundColor = Colors.Black,
+            Content = new MauiScrollView
+            {
+                Content = new VerticalStackLayout
+                {
+                    Padding = new Thickness(12),
+                    Spacing = 12,
+                    Children =
+                    {
+                        grid,
+                        cancelButton
+                    }
+                }
+            }
+        };
+
+        await Navigation.PushModalAsync(new NavigationPage(page)).ConfigureAwait(true);
+        return await tcs.Task.ConfigureAwait(true);
+    }
+
+    private static Grid BuildColorGrid(Color selected, Func<Color, Task> onSelected)
+    {
+        const int columns = 12;
+        var grid = new Grid
+        {
+            ColumnSpacing = 4,
+            RowSpacing = 4
+        };
+
+        for (var col = 0; col < columns; col++)
+        {
+            grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+        }
+
+        var rows = (int)Math.Ceiling(WebSafeColors.Count / (double)columns);
+        for (var row = 0; row < rows; row++)
+        {
+            grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+        }
+
+        for (var i = 0; i < WebSafeColors.Count; i++)
+        {
+            var color = WebSafeColors[i];
+            var isSelected = ColorsEqual(color, selected);
+            var border = new Border
+            {
+                Background = new SolidColorBrush(color),
+                Stroke = new SolidColorBrush(Colors.White),
+                StrokeThickness = isSelected ? 3 : 1,
+                HeightRequest = 24,
+                WidthRequest = 24
+            };
+            var tap = new TapGestureRecognizer();
+            tap.Tapped += async (_, _) => await onSelected(color).ConfigureAwait(true);
+            border.GestureRecognizers.Add(tap);
+            grid.Add(border, i % columns, i / columns);
+        }
+
+        return grid;
+    }
+
+    private static IReadOnlyList<Color> BuildWebSafeColors()
+    {
+        var steps = new byte[] { 0, 51, 102, 153, 204, 255 };
+        var list = new List<Color>(216);
+        foreach (var r in steps)
+        {
+            foreach (var g in steps)
+            {
+                foreach (var b in steps)
+                {
+                    list.Add(Color.FromRgb(r, g, b));
+                }
+            }
+        }
+        return list;
+    }
+
+    private static bool ColorsEqual(Color left, Color right)
+    {
+        return ToByte(left.Red) == ToByte(right.Red)
+            && ToByte(left.Green) == ToByte(right.Green)
+            && ToByte(left.Blue) == ToByte(right.Blue);
+    }
+
+    private static byte ToByte(float value)
+    {
+        return (byte)Math.Clamp((int)Math.Round(value * 255), 0, 255);
+    }
+
     private static string GetDefaultVoiceAsset(AlertEditor alert)
     {
         if (string.Equals(alert.Service?.Trim(), "x_space", StringComparison.OrdinalIgnoreCase))
@@ -370,12 +519,144 @@ public partial class MainPage : ContentPage
         await DisplayAlert("ログ出力", "ログファイルを保存しました。", "OK");
     }
 
+    private async void OnExportConfigClicked(object sender, EventArgs e)
+    {
+        var configPath = _viewModel.ConfigPath;
+        if (string.IsNullOrWhiteSpace(configPath) || !File.Exists(configPath))
+        {
+            await DisplayAlert("設定のエクスポート", "config.json が見つかりませんでした。", "OK");
+            return;
+        }
+
+        var uri = await PickSaveUriAsync("config.json", "application/json").ConfigureAwait(true);
+        if (uri == null)
+        {
+            return;
+        }
+
+        try
+        {
+#if ANDROID
+            var resolver = Android.App.Application.Context.ContentResolver;
+            if (resolver == null)
+            {
+                await DisplayAlert("設定のエクスポート", "保存先にアクセスできませんでした。", "OK");
+                return;
+            }
+
+            using var output = resolver.OpenOutputStream(uri);
+            if (output == null)
+            {
+                await DisplayAlert("設定のエクスポート", "保存先に書き込めませんでした。", "OK");
+                return;
+            }
+
+            using var input = File.OpenRead(configPath);
+            await input.CopyToAsync(output).ConfigureAwait(true);
+#endif
+        }
+        catch
+        {
+            await DisplayAlert("設定のエクスポート", "設定の保存に失敗しました。", "OK");
+            return;
+        }
+
+        await DisplayAlert("設定のエクスポート", "設定を保存しました。", "OK");
+    }
+
+    private async void OnImportConfigClicked(object sender, EventArgs e)
+    {
+        var uri = await PickOpenUriAsync().ConfigureAwait(true);
+        if (uri == null)
+        {
+            return;
+        }
+
+        try
+        {
+#if ANDROID
+            var resolver = Android.App.Application.Context.ContentResolver;
+            if (resolver == null)
+            {
+                await DisplayAlert("設定のインポート", "読み込み先にアクセスできませんでした。", "OK");
+                return;
+            }
+
+            using var input = resolver.OpenInputStream(uri);
+            if (input == null)
+            {
+                await DisplayAlert("設定のインポート", "読み込みに失敗しました。", "OK");
+                return;
+            }
+
+            using var reader = new StreamReader(input);
+            var json = await reader.ReadToEndAsync().ConfigureAwait(true);
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                await DisplayAlert("設定のインポート", "ファイルが空です。", "OK");
+                return;
+            }
+
+            var configPath = _viewModel.ConfigPath;
+            if (string.IsNullOrWhiteSpace(configPath))
+            {
+                await DisplayAlert("設定のインポート", "保存先が見つかりませんでした。", "OK");
+                return;
+            }
+
+            File.WriteAllText(configPath, json);
+#endif
+        }
+        catch
+        {
+            await DisplayAlert("設定のインポート", "設定の読み込みに失敗しました。", "OK");
+            return;
+        }
+
+        await _viewModel.ReloadAsync();
+        await DisplayAlert("設定のインポート", "設定を読み込みました。", "OK");
+    }
+
     private static async Task<Android.Net.Uri?> PickSaveUriAsync(string defaultFileName)
     {
 #if ANDROID
         try
         {
             return await MainActivity.CreateDocumentAsync(defaultFileName, "text/plain").ConfigureAwait(true);
+        }
+        catch
+        {
+            return null;
+        }
+#else
+        await Task.CompletedTask.ConfigureAwait(false);
+        return null;
+#endif
+    }
+
+    private static async Task<Android.Net.Uri?> PickSaveUriAsync(string defaultFileName, string mimeType)
+    {
+#if ANDROID
+        try
+        {
+            return await MainActivity.CreateDocumentAsync(defaultFileName, mimeType).ConfigureAwait(true);
+        }
+        catch
+        {
+            return null;
+        }
+#else
+        await Task.CompletedTask.ConfigureAwait(false);
+        return null;
+#endif
+    }
+
+    private static async Task<Android.Net.Uri?> PickOpenUriAsync()
+    {
+#if ANDROID
+        try
+        {
+            return await MainActivity.OpenDocumentAsync(new[] { "application/json", "text/json", "text/plain" }).ConfigureAwait(true);
         }
         catch
         {

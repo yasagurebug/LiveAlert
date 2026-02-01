@@ -11,7 +11,7 @@ public sealed class ConfigDefaultsTests
         var config = ConfigDefaults.CreateDefault();
 
         Assert.Single(config.Alerts);
-        Assert.Equal(5, config.DedupeMinutes);
+        Assert.Equal(5, config.Options.DedupeMinutes);
         var alert = config.Alerts[0];
         Assert.Equal("SAMPLE", alert.Label);
         Assert.Equal("https://www.youtube.com/channel/XXXX", alert.Url);
@@ -31,6 +31,7 @@ public sealed class ConfigDefaultsTests
         Assert.Equal("alarm", options.DisplayMode);
         Assert.Equal("alarm", options.AudioMode);
         Assert.Equal(5, options.LoopIntervalSec);
+        Assert.Equal(5, options.DedupeMinutes);
         Assert.Equal(-1, options.ExpandedAlertIndex);
         Assert.False(options.DebugMode);
     }

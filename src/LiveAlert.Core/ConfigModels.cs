@@ -5,7 +5,8 @@ namespace LiveAlert.Core;
 public sealed class ConfigRoot
 {
     [JsonPropertyName("dedupeMinutes")]
-    public int DedupeMinutes { get; set; } = 5;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int LegacyDedupeMinutes { get; set; }
 
     [JsonPropertyName("alerts")]
     public List<AlertConfig> Alerts { get; set; } = new();
@@ -85,6 +86,9 @@ public sealed class AlertOptions
     [JsonPropertyName("loopIntervalSec")]
     public int LoopIntervalSec { get; set; } = 5;
 
+    [JsonPropertyName("dedupeMinutes")]
+    public int DedupeMinutes { get; set; } = 5;
+
     [JsonPropertyName("expandedAlertIndex")]
     public int ExpandedAlertIndex { get; set; } = -1;
 
@@ -98,7 +102,6 @@ public static class ConfigDefaults
     {
         return new ConfigRoot
         {
-            DedupeMinutes = 5,
             Alerts =
             {
                 new AlertConfig
@@ -117,7 +120,10 @@ public static class ConfigDefaults
                     },
                 }
             },
-            Options = new AlertOptions()
+            Options = new AlertOptions
+            {
+                DedupeMinutes = 5
+            }
         };
     }
 }

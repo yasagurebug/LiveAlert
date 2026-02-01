@@ -227,7 +227,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
             config.Options.DisplayMode = ToCanonicalMode(DisplayMode);
             config.Options.AudioMode = ToCanonicalMode(AudioMode);
             config.Options.PollIntervalSec = Math.Clamp(PollIntervalSec, 60, 600);
-            config.DedupeMinutes = Math.Clamp(DedupeMinutes, 1, 30);
+            config.Options.DedupeMinutes = Math.Clamp(DedupeMinutes, 1, 30);
             config.Options.MaxAlarmDurationSec = Math.Clamp(MaxAlarmDurationSec, 15, 600);
             config.Options.LoopIntervalSec = Math.Clamp(LoopIntervalSec, 0, 60);
             var maxBandHeightPx = GetMaxBandHeightPx();
@@ -302,11 +302,11 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         DisplayMode = ToDisplayMode(config.Options.DisplayMode);
         AudioMode = ToDisplayMode(config.Options.AudioMode);
         config.Options.PollIntervalSec = Math.Clamp(config.Options.PollIntervalSec, 60, 600);
-        config.DedupeMinutes = Math.Clamp(config.DedupeMinutes <= 0 ? 5 : config.DedupeMinutes, 1, 30);
+            config.Options.DedupeMinutes = Math.Clamp(config.Options.DedupeMinutes <= 0 ? 5 : config.Options.DedupeMinutes, 1, 30);
         config.Options.MaxAlarmDurationSec = Math.Clamp(config.Options.MaxAlarmDurationSec, 15, 600);
         config.Options.LoopIntervalSec = Math.Clamp(config.Options.LoopIntervalSec, 0, 60);
         PollIntervalSec = config.Options.PollIntervalSec;
-        DedupeMinutes = config.DedupeMinutes;
+        DedupeMinutes = config.Options.DedupeMinutes;
         MaxAlarmDurationSec = config.Options.MaxAlarmDurationSec;
         LoopIntervalSec = config.Options.LoopIntervalSec;
         var maxBandHeightPx = GetMaxBandHeightPx();

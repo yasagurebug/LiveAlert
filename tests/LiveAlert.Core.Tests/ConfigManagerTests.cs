@@ -34,7 +34,6 @@ public sealed class ConfigManagerTests
 
         var config = new ConfigRoot
         {
-            DedupeMinutes = 7,
             Alerts =
             {
                 new AlertConfig
@@ -55,7 +54,8 @@ public sealed class ConfigManagerTests
                 NotificationMode = "manner",
                 DisplayMode = "alarm",
                 AudioMode = "manner",
-                LoopIntervalSec = 12
+                LoopIntervalSec = 12,
+                DedupeMinutes = 7
             }
         };
 
@@ -66,7 +66,7 @@ public sealed class ConfigManagerTests
 
         Assert.Equal("ALPHA", reloaded.Current.Alerts[0].Label);
         Assert.Equal("yasagure", reloaded.Current.Alerts[0].TitleContains);
-        Assert.Equal(7, reloaded.Current.DedupeMinutes);
+        Assert.Equal(7, reloaded.Current.Options.DedupeMinutes);
         Assert.Equal(120, reloaded.Current.Options.PollIntervalSec);
         Assert.Equal("bottom", reloaded.Current.Options.BandPosition);
         Assert.Equal("manner", reloaded.Current.Options.NotificationMode);

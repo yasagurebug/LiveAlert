@@ -9,8 +9,8 @@
     <Nullable>enable</Nullable>
     <ApplicationId>com.yasagurebug.livealert</ApplicationId>
     <ApplicationTitle>LiveAlert</ApplicationTitle>
-    <ApplicationDisplayVersion>0.11.1</ApplicationDisplayVersion>
-    <ApplicationVersion>12</ApplicationVersion>
+    <ApplicationDisplayVersion>0.12.0</ApplicationDisplayVersion>
+    <ApplicationVersion>13</ApplicationVersion>
     <SupportedOSPlatformVersion>26.0</SupportedOSPlatformVersion>
   </PropertyGroup>
 

@@ -33,4 +33,12 @@ YouTube のライブ開始をポーリングで検知し、X（旧Twitter）の 
 - POST_NOTIFICATIONS（Android 13+）
 - USE_FULL_SCREEN_INTENT
 
-ライセンス: MIT（詳細は `assets/readme_android.txt` を参照）
+## ライセンス
+- MITライセンス（詳細は `assets/readme_android.txt` を参照）
+
+## 変更履歴
+
+- 2026/01/29  v0.11.0 初版公開
+- 2026/02/01  v0.12.0 色設定をカラーピッカーに変更
+- 2026/02/01  v0.12.0 背景色と文字色がきちんと反映されていない問題を修正（結果として同じconfigで見た目が変わります）
+- 2026/02/01  v0.12.0 設定のエクスポート、インポート機能を実装
