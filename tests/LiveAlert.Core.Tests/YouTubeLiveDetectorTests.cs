@@ -33,17 +33,9 @@ public sealed class YouTubeLiveDetectorTests
         var handler = new StubHandler(req =>
         {
             var url = req.RequestUri?.ToString() ?? string.Empty;
-            if (url.Contains("/live"))
-            {
-                return new HttpResponseMessage(HttpStatusCode.OK)
-                {
-                    Content = new StringContent("\"videoId\":\"LIVE1234567\"")
-                };
-            }
-
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent("{\"isLiveNow\":false}")
+                Content = new StringContent("<html>No live overlays</html>")
             };
         });
         var client = new HttpClient(handler);
@@ -56,11 +48,36 @@ public sealed class YouTubeLiveDetectorTests
     }
 
     [Fact]
-    public async Task LivePageMissingVideoId_ReturnsNotLive()
+    public async Task StreamsLiveOverlay_ReturnsLive()
     {
-        var handler = new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        var handler = new StubHandler(req =>
         {
-            Content = new StringContent("<html>No video id here</html>")
+            var url = req.RequestUri?.ToString() ?? string.Empty;
+            if (url.Contains("/streams", StringComparison.OrdinalIgnoreCase))
+            {
+                var html = """
+                           <script>
+                           var ytInitialData = {"contents":{"items":[{"videoRenderer":{"videoId":"LIVE1234567","thumbnailOverlays":[{"thumbnailOverlayTimeStatusRenderer":{"style":"LIVE","text":{"runs":[{"text":"ライブ"}]}}}]}}]}};
+                           </script>
+                           """;
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(html)
+                };
+            }
+
+            if (url.Contains("watch?v=LIVE1234567", StringComparison.OrdinalIgnoreCase))
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("{\"isLiveNow\":true}")
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("<html></html>")
+            };
         });
         var client = new HttpClient(handler);
         var detector = new YouTubeLiveDetector(client);
@@ -68,7 +85,8 @@ public sealed class YouTubeLiveDetectorTests
 
         var result = await detector.CheckLiveAsync(alert, CancellationToken.None);
 
-        Assert.False(result.IsLive);
+        Assert.True(result.IsLive);
+        Assert.Equal("LIVE1234567", result.VideoId);
     }
 
     [Fact]

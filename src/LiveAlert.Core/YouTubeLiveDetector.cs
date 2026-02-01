@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace LiveAlert.Core;
@@ -11,8 +12,8 @@ public interface ILiveDetector
 public sealed class YouTubeLiveDetector : ILiveDetector
 {
     private readonly HttpClient _httpClient;
-    private static readonly Regex VideoIdRegex = new("\"videoId\":\"([A-Za-z0-9_-]{11})\"", RegexOptions.Compiled);
     private static readonly Regex IsLiveNowRegex = new("\"isLiveNow\":(true|false)", RegexOptions.Compiled);
+    private static readonly Regex InitialDataRegex = new(@"var ytInitialData\s*=\s*(\{.*?\});", RegexOptions.Compiled | RegexOptions.Singleline);
 
     public YouTubeLiveDetector(HttpClient httpClient)
     {
@@ -39,19 +40,30 @@ public sealed class YouTubeLiveDetector : ILiveDetector
                 return await CheckWatchPageAsync(videoId, cancellationToken).ConfigureAwait(false);
             }
 
-            var liveUrl = BuildLiveUrl(url);
-            var (liveOk, liveHtml, liveError) = await FetchStringAsync(liveUrl, cancellationToken).ConfigureAwait(false);
-            if (!liveOk)
+            var baseUrl = NormalizeChannelUrl(url);
+            var streamsUrl = $"{baseUrl}/streams";
+            var (streamsOk, streamsHtml, streamsError) = await FetchStringAsync(streamsUrl, cancellationToken).ConfigureAwait(false);
+            if (!streamsOk)
             {
-                return liveError ?? LiveCheckResult.Error("HTTP error");
+                return streamsError ?? LiveCheckResult.Error("HTTP error");
             }
-            var match = VideoIdRegex.Match(liveHtml ?? string.Empty);
-            if (!match.Success)
+
+            var candidateId = ExtractLiveVideoId(streamsHtml);
+            if (string.IsNullOrEmpty(candidateId))
+            {
+                var (homeOk, homeHtml, homeError) = await FetchStringAsync(baseUrl, cancellationToken).ConfigureAwait(false);
+                if (!homeOk)
+                {
+                    return homeError ?? LiveCheckResult.Error("HTTP error");
+                }
+                candidateId = ExtractLiveVideoId(homeHtml);
+            }
+
+            if (string.IsNullOrEmpty(candidateId))
             {
                 return LiveCheckResult.NotLive();
             }
 
-            var candidateId = match.Groups[1].Value;
             return await CheckWatchPageAsync(candidateId, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
@@ -81,15 +93,42 @@ public sealed class YouTubeLiveDetector : ILiveDetector
         return LiveCheckResult.NotLive();
     }
 
-    private static string BuildLiveUrl(string url)
+    private static string NormalizeChannelUrl(string url)
     {
-        if (url.Contains("/live", StringComparison.OrdinalIgnoreCase))
+        url = url.TrimEnd('/');
+        var lowered = url.ToLowerInvariant();
+        foreach (var suffix in new[] { "/streams", "/live", "/videos", "/featured" })
         {
-            return url;
+            if (lowered.EndsWith(suffix, StringComparison.Ordinal))
+            {
+                return url[..^suffix.Length];
+            }
+        }
+        return url;
+    }
+
+    private static string? ExtractLiveVideoId(string? html)
+    {
+        if (string.IsNullOrEmpty(html))
+        {
+            return null;
         }
 
-        url = url.TrimEnd('/');
-        return url + "/live";
+        var match = InitialDataRegex.Match(html);
+        if (!match.Success)
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(match.Groups[1].Value);
+            return FindLiveVideoId(document.RootElement);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static string? ExtractVideoIdFromUrl(string url)
@@ -115,6 +154,115 @@ public sealed class YouTubeLiveDetector : ILiveDetector
 
         var html = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         return (true, html, null);
+    }
+
+    private static string? FindLiveVideoId(JsonElement element)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+            {
+                if (element.TryGetProperty("videoId", out var videoIdElement) &&
+                    videoIdElement.ValueKind == JsonValueKind.String &&
+                    element.TryGetProperty("thumbnailOverlays", out var overlaysElement) &&
+                    overlaysElement.ValueKind == JsonValueKind.Array)
+                {
+                    if (HasLiveOverlay(overlaysElement))
+                    {
+                        return videoIdElement.GetString();
+                    }
+                }
+
+                foreach (var property in element.EnumerateObject())
+                {
+                    var found = FindLiveVideoId(property.Value);
+                    if (!string.IsNullOrEmpty(found))
+                    {
+                        return found;
+                    }
+                }
+
+                break;
+            }
+            case JsonValueKind.Array:
+            {
+                foreach (var item in element.EnumerateArray())
+                {
+                    var found = FindLiveVideoId(item);
+                    if (!string.IsNullOrEmpty(found))
+                    {
+                        return found;
+                    }
+                }
+
+                break;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool HasLiveOverlay(JsonElement overlaysElement)
+    {
+        foreach (var overlay in overlaysElement.EnumerateArray())
+        {
+            if (!overlay.TryGetProperty("thumbnailOverlayTimeStatusRenderer", out var renderer) ||
+                renderer.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            if (renderer.TryGetProperty("style", out var styleElement) &&
+                styleElement.ValueKind == JsonValueKind.String &&
+                styleElement.GetString()?.Equals("LIVE", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                return true;
+            }
+
+            if (renderer.TryGetProperty("text", out var textElement) &&
+                TextContainsLiveLabel(textElement))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool TextContainsLiveLabel(JsonElement textElement)
+    {
+        if (textElement.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+
+        if (textElement.TryGetProperty("simpleText", out var simpleText) &&
+            simpleText.ValueKind == JsonValueKind.String &&
+            simpleText.GetString()?.Contains("ライブ", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return true;
+        }
+
+        if (textElement.TryGetProperty("runs", out var runsElement) &&
+            runsElement.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var run in runsElement.EnumerateArray())
+            {
+                if (run.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
+                if (run.TryGetProperty("text", out var runText) &&
+                    runText.ValueKind == JsonValueKind.String &&
+                    runText.GetString()?.Contains("ライブ", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }
 
