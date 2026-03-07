@@ -1,0 +1,159 @@
+## 作業ログ
+- 2026-01-22: WSLにユーザー領域の .NET SDK 8.0.417 を導入（/home/main/.dotnet）。`LiveAlert.Core.Tests` を追加し、ConfigManager の読み書きとJSONコメント/末尾カンマ対応の単体テストを実装。
+- 2026-01-22: `ILiveDetector` を追加して `AlertMonitor` の依存を抽象化。
+- 2026-01-22: Android 実装を追加（Foreground Service、アラートキュー、オーバーレイ、MediaPlayer、AlarmManager、通知/警告の配線、MainActivity/Manifest/Resources）。
+- 2026-01-22: VSビルドエラー対策として `OverlayController` を削除し、`AlertOverlay` の `Color` 参照を明示化、`AlarmReceiver` の nullability を調整、`Microsoft.Maui.Controls` を追加。
+- 2026-01-22: .NET 8 固定のため `global.json` を追加。
+- 2026-01-22: VS2022ビルド警告/エラー対応（ServiceControllerのApplication曖昧参照解消、Intent引数修正、AddDebug削除、IWindowManager使用、null条件イベント解除、OperationCanceledExceptionの曖昧参照解消）。
+- 2026-01-22: XAML Picker の子要素修正、null警告/廃止API警告の抑制・回避、PendingIntent null ガード。
+- 2026-01-22: Androidリソースを Platforms/Android/Resources に移動し、AlertAudioPlayer/AlertOverlay の null 警告を解消。
+- 2026-01-22: Androidテストプロジェクト追加（自前テストランナー）。AlertQueue を Core に移動して Android テストが参照するのは Core のみとした。
+- 2026-01-22: Android/PC両方のテストを増強（YouTubeLiveDetector のスタブテスト、Android側の自前テストランナー拡張）。
+- 2026-01-22: Foreground Service type 未指定エラー対応（Service属性とStartForegroundでtype指定、manifest権限追加）。
+- 2026-01-23: WSLで Android ビルドと Core テストを実行し成功。ForegroundServiceType の参照を `Android.Content.PM.ForegroundService` に更新し、API 29 以上判定を `OperatingSystem.IsAndroidVersionAtLeast` に変更して警告解消。
+- 2026-01-23: 設定画面から `alerts` 配列と `loopIntervalSec` を編集できるように更新。AlertEditor を追加し、UIに追加/削除を実装。
+- 2026-01-23: テスト発報でサービス未起動時にForeground未開始の問題が出ないよう、ActionTest/ActionAlarm時にEnsureForegroundを実行。
+- 2026-01-23: Androidで詳細ログを出すため AppLog を追加し、Foreground Service/Audio/Overlay/Settings の主要イベントをLogcat+ファイルに出力。設定画面にログファイルパス表示を追加。
+- 2026-01-23: AppLog に Debug/Trace 出力を追加し、VS2022 の Output でも確認できるようにした（DEBUGビルドのみ）。
+- 2026-01-23: 帯のデザインを3段構成に更新（上下にEMERGENCY + 斜線ボーダーのスクロール、中央は明朝系の固定メッセージ）。StripedView を追加。
+- 2026-01-23: スクロール帯の型あいまい参照とNull警告を修正し、AndroidビルドとCoreテストを再実行（警告なし）。
+- 2026-01-23: ViewTreeObserver が破棄された後の参照で落ちる問題を修正（IsAliveチェック + 現行observerで解除）。AndroidビルドとCoreテストを再実行。
+- 2026-01-23: 帯デザインの文字サイズを拡大し、上下ストリップと中央メッセージの可読性を改善。AndroidビルドとCoreテストを再実行。
+- 2026-01-23: 上下帯と中央メッセージの高さを大きくし、ストリップの幅を画面幅に合わせて左端から流れるように調整。AndroidビルドとCoreテストを再実行。
+- 2026-01-23: 帯のストライプと文字を重ね、中央メッセージも連続スクロール化。上下/中央のスクロールを統一して切れ目のない左流しに調整。AndroidビルドとCoreテストを再実行。
+- 2026-01-23: ストライプもスクロールさせ、上下・中央とも同一幅ブロックで連続スクロールするよう再設計。AndroidビルドとCoreテストを再実行（警告なし）。
+- 2026-01-23: 内部画像を画面幅超まで繰り返す方式に変更し、オフセットを1パーツ幅でループさせる連続スクロールへ修正。AndroidビルドとCoreテストを再実行。
+- 2026-01-23: 5層構成（EMERGENCY/stripe/center/stripe/EMERGENCY）に作り直し、内部画像を生成して1パーツ幅でループするスクロールに刷新。AndroidビルドとCoreテストを再実行（警告なし）。
+- 2026-01-23: ストライプ層をBitmapShaderのRepeatでスクロールさせ、ガタつきを抑制。AndroidビルドとCoreテストを再実行（警告なし）。
+- 2026-01-23: ストライプ層を回転タイルのBitmapShaderで描画する方式に変更し、継ぎ目の崩れを解消。AndroidビルドとCoreテストを再実行。
+- 2026-01-23: ストライプシェーダーのTileModeをX/Y両方Repeatに修正し、回転時の崩れを抑制。AndroidビルドとCoreテストを再実行。
+- 2026-01-23: 斜めストライプは回転シェーダーをやめ、パターンタイルを生成してRepeatで流す方式に変更。AndroidビルドとCoreテストを再実行。
+- 2026-01-23: ストライプ層の縦方向Repeatを停止（TileMode.Clamp）し、X方向のみスクロールする設定に変更。AndroidビルドとCoreテストを再実行。
+- 2026-01-23: ストライプタイルの高さをレイヤー高さに合わせ、Clamp時の縦伸びを解消。AndroidビルドとCoreテストを再実行。
+- 2026-01-23: 帯スクロールの1周秒数をdoubleで扱えるように変更し、より高速な調整を可能に。AndroidビルドとCoreテストを再実行。
+- 2026-01-23: /fonts のフォントをAndroid資産として組み込み、中央メッセージで読み込む処理を追加。AndroidビルドとCoreテストを再実行。
+- 2026-01-23: NavigationPage を外して MainPage 直設定に変更し、FragmentのコンテナIDエラー回避。AndroidビルドとCoreテストを再実行。
+- 2026-01-24: font_readme.txt をAndroidAssetとして追加し、設定画面に「フォントのライセンス」ボタンと全文スクロール表示を実装。AndroidビルドとCoreテストを再実行。
+- 2026-01-24: 帯の最小高さを定数化し、保存時のクランプを最小～1000に変更。スクロール速度設定をUI/JSON処理から削除。AndroidビルドとCoreテストを再実行。
+- 2026-01-24: 帯高さの初期値を340に変更し、クランプ範囲を256～端末縦ピクセル数に更新。保存時/読み込み時にクランプ値で設定を上書きするように変更。AndroidビルドとCoreテストを再実行。
+- 2026-01-24: ホットリロードUI（スイッチ/再読み込みボタン）を削除し、常時HotReload=true扱いに変更。AndroidビルドとCoreテストを再実行。
+- 2026-01-24: 保存ボタンを削除し、設定・alerts編集の各項目変更時にconfig.jsonへ即時自動保存するように変更。AndroidビルドとCoreテストを再実行。
+- 2026-01-24: 設定画面のconfig/logパス表示を削除。帯高さをスライダー調整に変更し、ドラッグ完了時のみ保存。alertsの色はColorPicker、音声/BGMはFilePickerに変更。ボタン順序をテスト発報→フォントライセンスに変更。CommunityToolkit.Maui導入。AndroidビルドとCoreテストを再実行。
+- 2026-01-24: ColorPickerViewを追加して背景色/文字色をカラーピッカー化し、音声/BGMをFilePicker選択に変更。帯高さはスライダー+ドラッグ完了時のみ保存。AndroidビルドとCoreテストを再実行。
+- 2026-01-24: alertsのIDを廃止し、検出ログは配列インデックスを出力するよう変更。AlertMonitorの状態管理をインデックス基準へ更新。ColorPickerViewのスライダー幅をGridレイアウトで拡大。
+- 2026-01-24: テスト発報ボタンをReleaseでも表示。監視対象のサービスをPicker化。メッセージのデフォルトを「警告　{label} がライブ開始」に変更。音声/BGM選択のレイアウトをGrid化して幅問題を修正。ボタン配色を明るく調整。AlertOverlayの中央メッセージに設定色を反映。
+- 2026-01-24: ボタン配色を#330066/白へ調整。MainPageの型あいまい参照を解消し、MauiProgramのusing不足を修正。AlertOverlayの色反映・サービスPicker・デフォルト文言・ファイル選択レイアウトの変更を含めてビルド/テストを再実行。
+- 2026-01-24: /fonts を廃止して /assets にフォント/README/デフォルト音声を移行し、assets_readme.txt を表示。voice/bgm未設定時はassetsのデフォルト音声を再生するよう対応。AndroidビルドとCoreテストを再実行。
+- 2026-01-24: CommunityToolkit.Maui を削除（参照と初期化）。WSLの復元エラーを解消。AndroidビルドとCoreテストを再実行。
+- 2026-01-24: voice/bgmの音量スライダーとテスト再生ボタンを追加し、実再生にも音量を反映。AndroidビルドとCoreテストを再実行。
+- 2026-01-24: BGMデフォルト音量を50に変更。voice/bgmのパス欄タップで「デフォルト」へ戻せるようにし、テスト再生は再生中に押すと停止するように変更。ライセンスボタン文言を「ライセンス」に変更。AndroidビルドとCoreテストを再実行。
+- 2026-01-24: 設定画面全体を黒背景/白文字の明示スタイルに統一。監視対象(Alerts)をアコーディオン化し、表示名ラベルで折り畳み、1件のみ展開。展開中indexをconfig.jsonに永続化。AndroidビルドとCoreテストを再実行。
+- 2026-01-24: 通知モードのラジオボタン部の背景を黒に明示し、監視対象アコーディオンのヘッダータップをBindingContextから判定するよう修正。AndroidビルドとCoreテストを再実行。
+- 2026-01-24: 通知/画面表示/音声再生を alarm/manner/off に分離。Foreground常駐通知に「アラーム停止」アクション追加。設定UIを3つのPickerに変更し、旧alertMode/AlarmDelay廃止。Coreテスト更新。
+- 2026-01-24: keystore を .keystore/ に移動し、csproj の署名props参照を相対パス化。`.keystore/` を gitignore に追加。AndroidビルドとCoreテストを再実行。
+- 2026-01-24: 通知/アプリアイコンを assets から Android Resources に組み込み、通知小アイコンを ic_stat_livealert に差し替え、Manifest に icon/roundIcon を設定。
+- 2026-01-24: Androidのバージョン指定（ApplicationDisplayVersion=0.1.0 / ApplicationVersion=1）をcsprojに追加。
+- 2026-01-24: LiveAlert.Android.csproj から AndroidSigningKeyStore（livealert.keystore）指定を削除し、外部 props 指定前提に変更。
+- 2026-01-24: リポジトリ外に signing.props を作成し、.gitignore に signing.props を追加。
+- 2026-01-24: Android署名情報をリポジトリ外の signing.props から読み込めるようにし、プロジェクト側は環境変数/propsのどちらでも受ける条件付き参照に変更。
+- 2026-01-24: アプリ内READMEを assets/readme_android.txt に移動し、「このプログラムについて」ボタンから表示できるように追加。
+- 2026-01-24: Android Resources の参照不整合を修正（mipmap/drawable を Resources 配下へ移動、AndroidResource の LogicalName 付与）。
+- 2026-01-24: 通知/画面/音声モードの表示値を日本語（アラーム/マナー/OFF）で保持し、保存時は alarm/manner/off に変換。初期値が空欄になる問題を修正。
+- 2026-01-24: 画面オーバーレイ権限がない場合の警告を設定画面に表示し、成功時は警告をクリアするように追加。
+- 2026-01-24: テスト発報時にアクティブなアラートを停止・キューをクリアして即時再発報できるように修正。最大鳴動時間で自動停止するタイマーも追加。
+- 2026-01-24: アラート通知側にも「アラーム停止」アクションを追加。
+- 2026-01-24: voice/bgm のパス欄タップで「デフォルト」メニューが確実に出るように、Gridタップ化＋EntryをInputTransparentに変更。
+- 2026-01-24: 監視ポーリング間隔（60-600）、最大鳴動時間（15-600）、音声ループ時ウェイト（0-60）をスライダー化し、デフォルト値を 60/30/5 に更新。
+- 2026-01-24: アラーム帯の位置表示を「画面上部/画面下部」に変更（内部は top/bottom で保持）。
+- 2026-01-24: 優先度を 0-10 のスライダーに変更し、デフォルト10/保存時クランプを追加。
+- 2026-01-24: README を日本語化し、権限/設定/配置などの説明を最新仕様に合わせて更新。
+- 2026-01-24: permission.txt を読み込む権限設定画面を追加し、設定画面から遷移できるボタンを実装。通知/アプリ情報/他のアプリの上に表示の導線を追加。
+- 2026-01-24: SCHEDULE_EXACT_ALARM を削除し、AlarmClockInfo/AlarmReceiver/ActionAlarm を整理。permission.txt と spec_r1 の権限記述も更新。
+- 2026-01-24: permission.txt から「段階的モード」の表記を削除し、アラーム通知のみの説明に変更。
+- 2026-01-24: permission.txt の文言を調整し、権限名を「アラームとリマインダー」に変更、常駐停止の注意を追記。
+- 2026-01-24: 権限設定画面の説明文を assets/permission.txt として追加。
+- 2026-01-24: ログ表示を「ログ出力」へ変更し、保存先選択UI（Create Document）で livealert.log を出力するよう実装。
+- 2026-01-24: 監視サイクルごとに常駐通知の文言を更新（失敗/ライブ検知/ライブなし）。監視結果をCoreから通知し、Foreground通知を再発行して復活させる動作に対応。
+- 2026-01-24: 常駐通知のスワイプ消去を検知して即復活させるため、削除通知のReceiverを追加し、常駐ON中のみ再通知する仕組みを追加。
+- 2026-01-25: 監視失敗の理由をログ出力するイベントを追加し、SettingsViewModel.Save のログ出力を停止。
+- 2026-01-25: 取得失敗の警告メッセージを設定画面に出さないように変更。
+- 2026-01-25: 監視失敗の警告イベント配線を削除し、警告未使用の警告を解消。
+- 2026-01-25: 監視失敗時のHTTPステータスコードをログに含めるようにし、通信失敗時は理由のみを出力。
+- 2026-01-25: NuGet のパッケージ先を C:\nuget に変更（NuGet.Config/nuget.config）、キャッシュクリアと復元を実施。
+- 2026-01-25: 5秒再チェックと指数バックオフを無効化するスイッチを追加し、既通知のvideoIdをログ出力。常駐通知タップで設定画面を開くようにし、INTERNET権限を追加。仕様書の該当箇所を更新。
+- 2026-01-25: デバッグモードのADBブロードキャスト受信と設定画面表示を追加し、D: URLによるデバッグ判定を実装。アラート帯タップで停止＋検知URLを開くように変更。
+- 2026-01-25: D: URLデバッグ判定とデバッグモードの保存/UI/受信を削除し、検知URLは通常の動画/設定URLのみ開くよう整理。
+- 2026-01-25: デバッグモードのADB受信/設定保存/表示を復活し、DebugMode時はNotLiveをLIVE扱いにする（通信失敗は除外）。
+- 2026-01-25: DebugModeReceiver のNameを固定し、受信時にログ初期化して確実に反映・記録できるよう修正。
+- 2026-01-25: DebugModeReceiver でのログ初期化を削除（既存ログが消えるため）。
+- 2026-01-25: DebugModeReceiver の受信開始ログを DEBUG ビルド時のみ logcat に出すよう追加。
+- 2026-01-25: リポジトリ内 NuGet.config から globalPackagesFolder 指定を削除。
+- 2026-01-25: DebugModeReceiver のI/O前後ログ（DEBUG時のみ）を追加して停止箇所を特定可能にした。
+- 2026-01-25: DebugModeReceiver の処理を GoAsync + 非同期化し、受信スレッドをブロックしないように修正。
+- 2026-01-25: ログ2MB超で livealert.log を .old に退避してローテーション、ログ出力時は .old と現行を結合。DEBUG強制LIVEは通知済みIDに積まないよう調整し、DebugModeReceiver の null 警告を解消。
+- 2026-01-25: DEBUGモードの連続アラート抑止を解除（強制LIVE時も毎回アラートを発火）。
+- 2026-01-25: codexメモ（NuGetの参照先/ビルドとテスト分離）を追記。
+- 2026-01-25: LiveAlert.Core.Tests を AlertMonitor/AlertQueue/ConfigDefaults まで拡充し、Android.Tests を tests/old に移動してソリューションから除外。
+- 2026-01-25: 監視通知のLIVE検知ラベルを複数対応に変更し、アラート通知タップでYouTubeへ遷移するように追加。
+- 2026-01-25: alerts の優先度を廃止（config/UI/キュー/ログ/テスト/仕様/READMEから削除）し、順序は検知時刻＋indexで決定。
+- 2026-01-26: ロック画面表示の仕様（alarm時のみフルスクリーンActivity、解除後に継続アラートのみオーバーレイ表示）を spec_r1.md に反映。
+- 2026-01-26: maxAlarmDurationSec 到達時はActivity/帯/音停止、アラート通知は残す仕様に更新。
+- 2026-01-26: ロック中はフルスクリーンActivityで帯表示、解除後に継続中のみオーバーレイ表示する実装を追加（USE_FULL_SCREEN_INTENTを追加）。
+- 2026-01-26: ロック画面用AlertFullscreenActivityで通常帯と同じ描画を行うよう共通化（AlertBandFactory）し、関連リファクタを実施。
+- 2026-01-26: 監視ポーリング開始時にconfig.jsonを再読み込みし、ポーリング間隔の反映は次サイクルからに変更。
+- 2026-01-26: ポーリング待機時間を再読み込み後の PollIntervalSec で計算するよう変更。
+- 2026-01-26: Android 13+ での SecurityException を防ぐため、ロック画面Activityの動的Receiver登録に NotExported フラグを付与。
+- 2026-01-26: AlertFullscreenActivity の CA1416 警告を抑制。
+- 2026-01-26: ロック画面の帯表示を画面中央に配置し、高さを画面の半分に固定。
+- 2026-01-26: 通知またはオーバーレイ権限が未許可の場合、設定画面上部に赤文字で権限設定メッセージを表示。
+- 2026-01-29: X Space 通知検知の実装（NotificationListenerService、titleContains/space判定、デバウンス、contentIntent優先）と設定/UI/マニフェスト/権限説明を追加。
+- 2026-01-29: LiveAlertForegroundService の GetParcelableExtra 呼び分け警告（CA1416/CA1422）を抑制。
+- 2026-01-29: assets/readme_android.txt を X Space 追加仕様と現行UIに合わせて更新。
+- 2026-01-29: リポジトリ直下に README.md を追加（assets/readme_android.txt の要点を抜粋）。
+- 2026-01-29: README.md を日本語化。
+- 2026-01-29: spec_r1.md を現行仕様（X Space push/通知アクセス/重複抑止/ログ出力/デバッグモード等）に合わせて更新。
+- 2026-01-29: 帯位置に「画面中央」を追加し、YouTube/Spaceでデフォルト音声を分離、Space選択時のメッセージ既定値を追加。権限警告に通知アクセスも含め、spec_r1.md を更新。
+- 2026-02-01: web-safe 216色パレットのカラーピッカー仕様を specs/colorpicker.md に整理。
+- 2026-02-01: パレット式カラーピッカーUI（1行2列ボタン+web-safe 216色）に置き換え、デフォルト音声の分離や通知アクセス権限の判定を追加。
+- 2026-02-01: カラーピッカーで「起動前に選択中の色」を太枠表示し、EMERGENCY/ストライプにも背景色を適用。
+- 2026-02-01: 設定のエクスポート/インポートを追加し、ボタン配置を指定順に変更。
+- 2026-02-01: assets/readme_android.txt を現行UI（ボタン順/エクスポート・インポート/帯位置/カラーパレット）に合わせて更新。
+- 2026-02-01: config.json の JSON 出力で日本語が \\u エスケープされないように設定。
+- 2026-02-01: dedupeMinutes を options 配下に移動し、旧フィールドは読み取りのみで互換対応。
+- 2026-02-02: YouTube 検知を /streams → ホームのフォールバックで LIVE overlay を拾う方式に変更（メン限対応強化）。
+- 2026-02-02: YouTubeLiveDetector のテストを /streams の LIVE overlay 検知に合わせて更新。
+- 2026-02-02: WSL ビルド/テストのログ出力用に `scripts/build_wsl.sh` と `scripts/test_wsl.sh` を追加（`logs/*.log` に保存）。
+- 2026-03-08: `LiveAlert.Windows` を追加し、WPF のタスクトレイ常駐アプリとして Windows 版を実装。YouTube 監視、設定ウィンドウ、帯表示、音声再生、ロック時の音声継続を追加。
+- 2026-03-08: Windows 設定画面に「このプログラムについて」「外部ライセンス」を追加し、共通テキストビューアで `readme_windows.txt` と `assets_readme.txt` を表示できるようにした。
+- 2026-03-08: `assets/readme_windows.txt` を Android 版と同等の粒度へ拡充し、起動/常駐、設定方法、帯と音声の動作、補足、MIT ライセンスまで記載した。
+- 2026-03-08: Windows の帯描画を調整し、テキスト層は Android と同様に表示幅を超える内部幅を作ってからループ、ストライプ層はパターンタイル描画を継続しつつレイアウト丸めを有効化した。
+- 2026-03-08: Windows の帯描画を `OnRender` 直接描画へ差し替え、文字層と斜線層を別ビュー化した。中央帯フォントは `assets/TsukuhouShogoMin-OFL.ttf` の英語ファミリー名で参照するよう修正。
+- 2026-03-08: Windows の帯描画を Android と同じ `ビットマップ生成 + 単位幅スクロール` へ戻し、全レイヤーを `ScrollingBitmapView` に統一。描画待ちの再投入ループも廃止した。
+- 2026-03-08: Windows 設定画面から監視開始/停止とデバッグモードを削除し、操作系をタスクトレイメニューへ移動。全体設定/個別設定の分離、色の Windows カラーピッカー化、`SAMPLE` 帯クリック時の YouTube 遷移抑止も反映した。
+- 2026-03-08: Windows 実行ファイルのバージョンを `LiveAlert.Windows.csproj` で明示し、Android 側の `0.13.0 / 14` に合わせて `Version` / `FileVersion` などを設定した。
+- 2026-03-08: Windows 設定画面のレイアウトを再構成し、ヘッダー直下に全体設定を全幅配置、その下を左ペインの監視対象一覧と右ペインの個別設定に分離した。常駐説明文はヘッダーブロック最下部へ移動。
+- 2026-03-08: Windows の `FileVersion` を固定値から自動生成へ変更し、ビルド時の UTC 日付と時刻から採番するようにした。
+- 2026-03-08: Windows 版の表示バージョンを `0.1` に揃え、`Version` と `InformationalVersion` を更新した。
+- 2026-03-08: Windows 設定画面ヘッダーに実行中アセンブリのバージョンを動的表示するよう変更し、ハードコードのタイトル文字列を廃止した。
+- 2026-03-08: Windows 設定画面の全体設定で `帯位置` だけ改行されていたレイアウト崩れを修正し、5項目を同一行のグリッドへ揃えた。
+- 2026-03-08: Windows 設定に `Windows起動時に自動起動する` を追加し、HKCU Run 登録と連動させた。設定有効時は exe 起動時に設定画面を出さず、トレイ常駐のみで開始するよう変更した。
+- 2026-03-08: Windows 同梱アセットを `Content` 配布から埋め込みリソースへ変更し、起動時に `%APPDATA%\\LiveAlert\\assets` へ展開して利用する方式へ切り替えた。
+- 2026-03-08: Windows 同梱アセットの展開もやめ、WPF `Resource` と `pack URI` で exe 内から直接読む方式へ変更した。
+- 2026-03-08: Windows 埋め込みアセット読込の `Application` 曖昧参照を解消し、`AppAssets` のビルドエラーを修正した。
+- 2026-03-08: Windows 配布方式を Visual Studio Installer Projects から Inno Setup へ切り替えた。`vdproj` を外し、`framework-dependent publish -> scripts/package_windows.ps1 -> installer/LiveAlert.Windows.iss` で `setup.exe` を作る構成にした。
+- 2026-03-08: Windows インストーラに `.NET 8 Desktop Runtime` の自動検出・ダウンロード・サイレント導入を追加した。未導入時は Microsoft の `aka.ms` 配布 URL を使う。
+
+## 未完了
+- Windows 設定 UI に色プレビュー以外の入力補助（プリセット、最近使った色など）はまだない。
+- Windows 版の実機で、ロック中の音声継続と設定画面レイアウトの最終確認が未実施。
+
+## 次の作業候補
+- Windows 設定 UI のログ出力導線。
+- 実機でのロック中再生確認。
+- 色選択 UI の微調整。
+- Core テストの追加（AlertMonitor のバックオフ/重複抑止など）。
+
+## codexメモ
+- NuGet: VS2022 は `C:\nuget_vs` を参照（%AppData%\NuGet\NuGet.Config の globalPackagesFolder）。
+- NuGet: WSL でのビルドは `NUGET_PACKAGES=/mnt/c/nuget` を明示して実行。
+- ビルドとテストは分離して実行（タイムアウト回避のため）。

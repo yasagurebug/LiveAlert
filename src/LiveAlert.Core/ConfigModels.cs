@@ -94,6 +94,9 @@ public sealed class AlertOptions
 
     [JsonPropertyName("debugMode")]
     public bool DebugMode { get; set; }
+
+    [JsonPropertyName("windowsAutoStart")]
+    public bool WindowsAutoStart { get; set; }
 }
 
 public static class ConfigDefaults

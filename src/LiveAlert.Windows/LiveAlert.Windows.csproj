@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>Resources\LiveAlert.ico</ApplicationIcon>
+    <Version>0.1</Version>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <AutoFileVersionBuild>$([System.DateTime]::UtcNow.ToString("MMdd"))</AutoFileVersionBuild>
+    <AutoFileVersionRevision>$([System.DateTime]::UtcNow.ToString("HHmm"))</AutoFileVersionRevision>
+    <FileVersion>0.1.$(AutoFileVersionBuild).$(AutoFileVersionRevision)</FileVersion>
+    <InformationalVersion>0.1</InformationalVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LiveAlert.Core\LiveAlert.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\LiveAlert.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="..\..\assets\voice_live.wav">
+      <Link>Assets\voice_live.wav</Link>
+    </Resource>
+    <Resource Include="..\..\assets\bgm.mp3">
+      <Link>Assets\bgm.mp3</Link>
+    </Resource>
+    <Resource Include="..\..\assets\TsukuhouShogoMin-OFL.ttf">
+      <Link>Assets\TsukuhouShogoMin-OFL.ttf</Link>
+    </Resource>
+    <Resource Include="..\..\assets\assets_readme.txt">
+      <Link>Assets\assets_readme.txt</Link>
+    </Resource>
+    <Resource Include="..\..\assets\readme_windows.txt">
+      <Link>Assets\readme_windows.txt</Link>
+    </Resource>
+  </ItemGroup>
+</Project>

@@ -34,5 +34,6 @@ public sealed class ConfigDefaultsTests
         Assert.Equal(5, options.DedupeMinutes);
         Assert.Equal(-1, options.ExpandedAlertIndex);
         Assert.False(options.DebugMode);
+        Assert.False(options.WindowsAutoStart);
     }
 }

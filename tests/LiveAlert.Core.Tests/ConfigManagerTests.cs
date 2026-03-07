@@ -55,7 +55,8 @@ public sealed class ConfigManagerTests
                 DisplayMode = "alarm",
                 AudioMode = "manner",
                 LoopIntervalSec = 12,
-                DedupeMinutes = 7
+                DedupeMinutes = 7,
+                WindowsAutoStart = true
             }
         };
 
@@ -71,6 +72,7 @@ public sealed class ConfigManagerTests
         Assert.Equal("bottom", reloaded.Current.Options.BandPosition);
         Assert.Equal("manner", reloaded.Current.Options.NotificationMode);
         Assert.Equal(12, reloaded.Current.Options.LoopIntervalSec);
+        Assert.True(reloaded.Current.Options.WindowsAutoStart);
     }
 
     [Fact]

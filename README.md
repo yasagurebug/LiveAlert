@@ -1,11 +1,29 @@
 # LiveAlert
 
-YouTube のライブ開始をポーリングで検知し、X（旧Twitter）の Space は通知アクセスで検知して、警告帯・通知・音声/BGM で知らせる Android アプリです。
+YouTube のライブ開始をポーリングで検知し、警告帯と音声/BGM で知らせるアプリです。Android 版は X（旧Twitter）の Space 通知検知にも対応し、Windows 版は YouTube 専用です。
 
 ## 主要ポイント
 - YouTube: 公開ページのポーリング検知（公式 API 不使用）
-- X Space: 通知アクセスによる push 検知
+- Android の X Space: 通知アクセスによる push 検知
+- Windows: タスクトレイ常駐 + 設定ウィンドウ + 帯表示
 - EVA 風の警告帯オーバーレイ + 音声/BGM
+
+## 対応プラットフォーム
+- Android: YouTube + X Space
+- Windows (WPF): YouTube のみ
+
+## かんたん設定（Windows）
+1) `src/LiveAlert.Windows` をビルドして起動  
+2) タスクトレイ常駐した状態で設定ウィンドウから YouTube URL を登録  
+3) ウィンドウを閉じても監視は継続  
+4) ロック中は音声のみ、ログオン中は帯も表示
+5) `アラーム停止` / `テスト発報` / `設定フォルダ` / `このプログラムについて` / `外部ライセンス` はタスクトレイ右クリックメニューから使う
+
+## Windows 配布
+- Windows 版のインストーラは Inno Setup を使う
+- `scripts/package_windows.ps1` で `framework-dependent` の publish とインストーラ生成をまとめて実行できる
+- 生成物は `installer/output` に出る
+- 配布先に `.NET 8 Desktop Runtime` が無い場合、インストーラが Microsoft の配布 URL から自動取得して導入する
 
 ## かんたん設定（Android）
 1) インストールして起動  
@@ -43,3 +61,4 @@ YouTube のライブ開始をポーリングで検知し、X（旧Twitter）の 
 - 2026/02/01  v0.12.0 背景色と文字色がきちんと反映されていない問題を修正（結果として同じconfigで見た目が変わります）
 - 2026/02/01  v0.12.0 設定のエクスポート、インポート機能を実装
 - 2026/02/02  v0.13.0 メン限のライブが拾えないケースがあったので検知方法を改善
+- 2026/03/08  Windows (WPF) 版を追加（タスクトレイ常駐 / YouTube 専用）
