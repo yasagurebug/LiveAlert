@@ -15,6 +15,8 @@ public static class AppAssets
 
     public static Uri LicenseTextUri => CreateResourceUri("Assets/assets_readme.txt");
 
+    public static Uri NicoImageUri => CreateResourceUri("Assets/nico.png");
+
     public static Uri CenterFontBaseUri => ResourceBaseUri;
 
     public static string CenterFontFamilyPath => "./Assets/#Tsukuhou Shogo Mincho OFL H";

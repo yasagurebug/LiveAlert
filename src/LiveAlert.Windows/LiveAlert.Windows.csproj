@@ -7,12 +7,12 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationIcon>Resources\LiveAlert.ico</ApplicationIcon>
-    <Version>0.1</Version>
-    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <Version>0.2</Version>
+    <AssemblyVersion>0.2.0.0</AssemblyVersion>
     <AutoFileVersionBuild>$([System.DateTime]::UtcNow.ToString("MMdd"))</AutoFileVersionBuild>
     <AutoFileVersionRevision>$([System.DateTime]::UtcNow.ToString("HHmm"))</AutoFileVersionRevision>
-    <FileVersion>0.1.$(AutoFileVersionBuild).$(AutoFileVersionRevision)</FileVersion>
-    <InformationalVersion>0.1</InformationalVersion>
+    <FileVersion>0.2.$(AutoFileVersionBuild).$(AutoFileVersionRevision)</FileVersion>
+    <InformationalVersion>0.2</InformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -42,6 +42,9 @@
     </Resource>
     <Resource Include="..\..\assets\readme_windows.txt">
       <Link>Assets\readme_windows.txt</Link>
+    </Resource>
+    <Resource Include="..\..\assets\nico.png">
+      <Link>Assets\nico.png</Link>
     </Resource>
   </ItemGroup>
 </Project>

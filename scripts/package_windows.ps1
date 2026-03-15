@@ -18,7 +18,7 @@ if ([string]::IsNullOrWhiteSpace($version)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($PublishDir)) {
-    $PublishDir = Join-Path $repoRoot "src\LiveAlert.Windows\bin\$Configuration\net8.0-windows\$RuntimeIdentifier\publish"
+    $PublishDir = Join-Path $repoRoot ("src\LiveAlert.Windows\bin\{0}\net8.0-windows\{1}\publish" -f $Configuration, $RuntimeIdentifier)
 }
 
 if (-not $SkipPublish) {
@@ -62,8 +62,8 @@ if (-not $isccPath) {
 }
 
 $isccArgs = @(
-    "/DAppVersion=$version",
-    "/DPublishDir=$PublishDir",
+    ("/DAppVersion={0}" -f $version),
+    ("/DPublishDir={0}" -f $PublishDir),
     $installerScript
 )
 

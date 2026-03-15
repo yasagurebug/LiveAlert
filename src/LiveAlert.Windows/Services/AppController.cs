@@ -18,6 +18,7 @@ public sealed class AppController : IDisposable
     private readonly AlertAudioPlayer _audioPlayer;
     private readonly SessionStateMonitor _sessionMonitor;
     private readonly StartupRegistrationService _startupRegistration;
+    private readonly NicoEasterEggController _nicoEasterEgg;
     private readonly HttpClient _httpClient;
     private readonly CancellationTokenSource _shutdownCts = new();
     private CancellationTokenSource? _monitoringCts;
@@ -40,6 +41,7 @@ public sealed class AppController : IDisposable
         _audioPlayer = new AlertAudioPlayer();
         _sessionMonitor = new SessionStateMonitor();
         _startupRegistration = new StartupRegistrationService();
+        _nicoEasterEgg = new NicoEasterEggController();
         ViewModel = new MainWindowViewModel(_configManager);
         ViewModel.PropertyChanged += HandleViewModelPropertyChanged;
 
@@ -58,6 +60,7 @@ public sealed class AppController : IDisposable
         _trayIcon.ExitRequested += ExitApplication;
 
         _sessionMonitor.LockStateChanged += HandleLockStateChanged;
+        _nicoEasterEgg.SpriteClicked += HandleOverlayClicked;
     }
 
     public MainWindowViewModel ViewModel { get; }
@@ -115,6 +118,7 @@ public sealed class AppController : IDisposable
 
             _audioPlayer.Stop();
             _overlayWindow?.Hide();
+            _nicoEasterEgg.Stop();
             _currentItem = null;
             ViewModel.CurrentAlertText = "なし";
             _trayIcon.UpdateAlertState(false);
@@ -167,6 +171,7 @@ public sealed class AppController : IDisposable
         StopMonitoring();
         _shutdownCts.Cancel();
         _overlayWindow?.Close();
+        _nicoEasterEgg.Dispose();
         _trayIcon.Dispose();
         _sessionMonitor.Dispose();
         _audioPlayer.Dispose();
@@ -265,6 +270,7 @@ public sealed class AppController : IDisposable
             if (isLocked)
             {
                 _overlayWindow?.Hide();
+                _nicoEasterEgg.Stop();
                 return;
             }
 
@@ -308,6 +314,7 @@ public sealed class AppController : IDisposable
         _overlayWindow.BandClicked -= HandleOverlayClicked;
         _overlayWindow.BandClicked += HandleOverlayClicked;
         _overlayWindow.Apply(item.Alert, ViewModel.BuildConfig().Options);
+        _nicoEasterEgg.Start(item.Alert);
 
         if (!_overlayWindow.IsVisible)
         {

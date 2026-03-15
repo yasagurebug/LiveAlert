@@ -11,6 +11,9 @@ MIT License
 ■BGM
 追跡者 written by まんぼう二等兵 from DOVA-SYNDROME
 
+■にこちイラスト
+うぇいん　さん（https://x.com/whein_cloe）
+
 ■フォント
 築豊初号明朝OFL
 以下がフォント同梱のreadmeとライセンスの内容です。
