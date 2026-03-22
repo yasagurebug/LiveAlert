@@ -6,6 +6,7 @@ public sealed class AlertMonitor
     private readonly ILiveDetector _youtube;
     private readonly Dictionary<int, AlertRuntimeState> _state = new();
     private readonly HashSet<string> _notifiedVideoIds = new();
+    private readonly HashSet<string> _alreadyNotifiedLoggedVideoIds = new();
     private static readonly bool EnableFailureBackoff = false;
     private static readonly bool EnableConfirmRecheck = false;
 
@@ -123,7 +124,10 @@ public sealed class AlertMonitor
             }
             else
             {
-                MonitoringDebug?.Invoke($"Already notified videoId={videoId} label={alert.Label}");
+                if (_alreadyNotifiedLoggedVideoIds.Add(videoId))
+                {
+                    MonitoringDebug?.Invoke($"Already notified videoId={videoId} label={alert.Label}");
+                }
                 state.CurrentLiveVideoId = videoId;
             }
         }
@@ -131,6 +135,7 @@ public sealed class AlertMonitor
         {
             if (!string.IsNullOrEmpty(state.CurrentLiveVideoId))
             {
+                _alreadyNotifiedLoggedVideoIds.Remove(state.CurrentLiveVideoId);
                 AlertEnded?.Invoke(state.CurrentLiveVideoId);
                 state.CurrentLiveVideoId = null;
             }

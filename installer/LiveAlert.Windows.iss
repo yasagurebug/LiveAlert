@@ -1,5 +1,18 @@
-#ifndef AppVersion
-#define AppVersion "0.2"
+#sub ReadAppVersionLine
+  #define CsprojLine = FileRead(CsprojHandle)
+  #if Pos(VersionTagStart, CsprojLine) > 0 && Pos(VersionTagEnd, CsprojLine) > Pos(VersionTagStart, CsprojLine)
+    #define public AppVersion = Copy(CsprojLine, Pos(VersionTagStart, CsprojLine) + Len(VersionTagStart), Pos(VersionTagEnd, CsprojLine) - (Pos(VersionTagStart, CsprojLine) + Len(VersionTagStart)))
+  #endif
+#endsub
+
+#for {CsprojHandle = FileOpen(CsprojPath); CsprojHandle && !FileEof(CsprojHandle) && AppVersion == ""; ""} ReadAppVersionLine
+#if CsprojHandle
+  #expr FileClose(CsprojHandle)
+#endif
+
+#if AppVersion == ""
+  #error Unable to read <Version> from Kirinico.App\Kirinico.App.csproj
+#endif
 #endif
 
 #ifndef PublishDir

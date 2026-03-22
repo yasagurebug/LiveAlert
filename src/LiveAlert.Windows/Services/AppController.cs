@@ -3,6 +3,7 @@ using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.ComponentModel;
+using System.Collections.Generic;
 using LiveAlert.Core;
 using LiveAlert.Windows.ViewModels;
 using LiveAlert.Windows.Views;
@@ -26,6 +27,7 @@ public sealed class AppController : IDisposable
     private OverlayWindow? _overlayWindow;
     private MainWindow? _mainWindow;
     private AlertQueueItem? _currentItem;
+    private volatile bool _monitorLoopObservedSuccessfulCycle;
 
     public AppController()
     {
@@ -193,20 +195,81 @@ public sealed class AppController : IDisposable
 
         _monitoringCts = CancellationTokenSource.CreateLinkedTokenSource(_shutdownCts.Token);
         var token = _monitoringCts.Token;
-        _ = Task.Run(async () =>
+        _ = Task.Run(() => RunMonitoringSupervisorAsync(token), token);
+    }
+
+    private async Task RunMonitoringSupervisorAsync(CancellationToken token)
+    {
+        var restartDelaySeconds = 5;
+        while (!token.IsCancellationRequested)
         {
+            _monitorLoopObservedSuccessfulCycle = false;
+
             try
             {
+                AppLog.Info($"Monitoring supervisor starting monitor loop restartDelaySec={restartDelaySeconds}");
                 await _monitor.RunAsync(token).ConfigureAwait(false);
+
+                if (token.IsCancellationRequested)
+                {
+                    break;
+                }
+
+                AppLog.Error("Monitoring loop exited unexpectedly without cancellation.");
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
             {
+                break;
+            }
+            catch (OperationCanceledException ex)
+            {
+                AppLog.Error($"Monitoring loop canceled unexpectedly. {FormatExceptionSummary(ex)}", ex);
             }
             catch (Exception ex)
             {
-                AppLog.Error("Monitoring loop failed", ex);
+                AppLog.Error($"Monitoring loop failed unexpectedly. {FormatExceptionSummary(ex)}", ex);
             }
-        }, token);
+
+            if (token.IsCancellationRequested)
+            {
+                break;
+            }
+
+            if (_monitorLoopObservedSuccessfulCycle)
+            {
+                restartDelaySeconds = 5;
+            }
+
+            AppLog.Warn($"Monitoring supervisor restarting after {restartDelaySeconds} seconds.");
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(restartDelaySeconds), token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                break;
+            }
+
+            if (!_monitorLoopObservedSuccessfulCycle)
+            {
+                restartDelaySeconds = restartDelaySeconds <= int.MaxValue / 2
+                    ? restartDelaySeconds * 2
+                    : int.MaxValue;
+            }
+        }
+
+        AppLog.Info("Monitoring supervisor stopped.");
+    }
+
+    private static string FormatExceptionSummary(Exception exception)
+    {
+        var parts = new List<string>();
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            parts.Add($"Type={current.GetType().FullName} Message={current.Message}");
+        }
+
+        return string.Join(" | Inner=", parts);
     }
 
     private void StopMonitoring()
@@ -245,6 +308,7 @@ public sealed class AppController : IDisposable
 
     private void HandleMonitoringSummaryUpdated(MonitoringSummary summary)
     {
+        _monitorLoopObservedSuccessfulCycle = true;
         _ = System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
         {
             var timestamp = DateTime.Now.ToString("HH:mm");

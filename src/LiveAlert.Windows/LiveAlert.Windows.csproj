@@ -7,12 +7,11 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationIcon>Resources\LiveAlert.ico</ApplicationIcon>
-    <Version>0.2</Version>
-    <AssemblyVersion>0.2.0.0</AssemblyVersion>
-    <AutoFileVersionBuild>$([System.DateTime]::UtcNow.ToString("MMdd"))</AutoFileVersionBuild>
-    <AutoFileVersionRevision>$([System.DateTime]::UtcNow.ToString("HHmm"))</AutoFileVersionRevision>
-    <FileVersion>0.2.$(AutoFileVersionBuild).$(AutoFileVersionRevision)</FileVersion>
-    <InformationalVersion>0.2</InformationalVersion>
+    <Version>0.1.1</Version>
+    <AssemblyVersion>$(Version).0</AssemblyVersion>
+    <AutoFileVersionSuffix>$([System.DateTime]::UtcNow.ToString("HHmm"))</AutoFileVersionSuffix>
+    <FileVersion>$(Version).$(AutoFileVersionSuffix)</FileVersion>
+    <InformationalVersion>$(Version)</InformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>

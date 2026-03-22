@@ -99,6 +99,54 @@ public sealed class AlertMonitorTests
     }
 
     [Fact]
+    public async Task AlreadyNotified_DebugLog_IsSuppressedAfterFirstMessagePerLiveSession()
+    {
+        var detector = new SequenceDetector(
+            LiveCheckResult.Live("VID777"),
+            LiveCheckResult.Live("VID777"),
+            LiveCheckResult.Live("VID777"));
+        var monitor = CreateMonitor(detector);
+        var alert = new AlertConfig { Url = "https://www.youtube.com/@sample", Label = "SAMPLE" };
+        var options = new AlertOptions { PollIntervalSec = 60 };
+        var logs = new List<string>();
+        monitor.MonitoringDebug += message => logs.Add(message);
+
+        await PollAsync(monitor, alert, 0, options);
+        ForceNextAllowed(monitor, 0, DateTimeOffset.MinValue);
+        await PollAsync(monitor, alert, 0, options);
+        ForceNextAllowed(monitor, 0, DateTimeOffset.MinValue);
+        await PollAsync(monitor, alert, 0, options);
+
+        Assert.Single(logs);
+        Assert.Contains("Already notified videoId=VID777", logs[0]);
+    }
+
+    [Fact]
+    public async Task AlreadyNotified_DebugLog_IsAllowedAgainAfterLiveEnds()
+    {
+        var detector = new SequenceDetector(
+            LiveCheckResult.Live("VID777"),
+            LiveCheckResult.Live("VID777"),
+            LiveCheckResult.NotLive(),
+            LiveCheckResult.Live("VID777"));
+        var monitor = CreateMonitor(detector);
+        var alert = new AlertConfig { Url = "https://www.youtube.com/@sample", Label = "SAMPLE" };
+        var options = new AlertOptions { PollIntervalSec = 60 };
+        var logs = new List<string>();
+        monitor.MonitoringDebug += message => logs.Add(message);
+
+        await PollAsync(monitor, alert, 0, options);
+        ForceNextAllowed(monitor, 0, DateTimeOffset.MinValue);
+        await PollAsync(monitor, alert, 0, options);
+        ForceNextAllowed(monitor, 0, DateTimeOffset.MinValue);
+        await PollAsync(monitor, alert, 0, options);
+        ForceNextAllowed(monitor, 0, DateTimeOffset.MinValue);
+        await PollAsync(monitor, alert, 0, options);
+
+        Assert.Equal(2, logs.Count);
+    }
+
+    [Fact]
     public async Task NonYouTubeService_SkipsDetector()
     {
         var detector = new SequenceDetector(LiveCheckResult.Live("VID-A"));
