@@ -1,3 +1,11 @@
+#ifndef AppVersion
+#define CsprojPath AddBackslash(SourcePath) + "..\\src\\LiveAlert.Windows\\LiveAlert.Windows.csproj"
+#define CsprojHandle 0
+#define CsprojLine ""
+#define VersionTagStart "<Version>"
+#define VersionTagEnd "</Version>"
+#define public AppVersion ""
+
 #sub ReadAppVersionLine
   #define CsprojLine = FileRead(CsprojHandle)
   #if Pos(VersionTagStart, CsprojLine) > 0 && Pos(VersionTagEnd, CsprojLine) > Pos(VersionTagStart, CsprojLine)
@@ -11,7 +19,7 @@
 #endif
 
 #if AppVersion == ""
-  #error Unable to read <Version> from Kirinico.App\Kirinico.App.csproj
+  #error Unable to read <Version> from ..\src\LiveAlert.Windows\LiveAlert.Windows.csproj
 #endif
 #endif
 
