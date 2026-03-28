@@ -24,6 +24,22 @@
                     <TextBlock FontSize="30" FontWeight="Bold" Text="{Binding AppDisplayName}" />
                     <TextBlock Margin="0,8,0,0" FontSize="14" Foreground="#D0D0D0" Text="{Binding StatusText}" />
                     <TextBlock Margin="0,4,0,0" FontSize="14" Foreground="#D0D0D0" Text="{Binding CurrentAlertText, StringFormat=現在のアラート: {0}}" />
+                    <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding RecordingJobs}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <DockPanel Margin="0,0,0,4">
+                                    <Button DockPanel.Dock="Right"
+                                            Padding="8,2"
+                                            Margin="8,0,0,0"
+                                            Background="#7A1F1F"
+                                            Foreground="White"
+                                            Click="HandleStopRecordingClick"
+                                            Content="録画停止" />
+                                    <TextBlock FontSize="14" Foreground="#FF6B6B" Text="{Binding DisplayText}" />
+                                </DockPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                     <TextBlock Margin="0,4,0,0" FontSize="12" Foreground="#9A9A9A" Text="{Binding ConfigPath, StringFormat=config: {0}}" />
                     <TextBlock Margin="0,14,0,0"
                                FontSize="13"
@@ -91,6 +107,34 @@
                               Foreground="White"
                               IsChecked="{Binding WindowsAutoStart}"
                               Content="Windows起動時に自動起動する" />
+
+                    <StackPanel Grid.Row="4" Margin="280,0,0,0">
+                        <CheckBox VerticalAlignment="Center"
+                                  Foreground="White"
+                                  IsChecked="{Binding LiveRecordingEnabled}"
+                                  Content="ライブ録画を有効にする" />
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox Grid.Column="0"
+                                     MinWidth="260"
+                                     Text="{Binding RecordingSaveDirectory, UpdateSourceTrigger=PropertyChanged}" />
+                            <Button Grid.Column="1"
+                                    Margin="8,0,0,0"
+                                    Padding="12,6"
+                                    Background="#455A64"
+                                    Foreground="White"
+                                    Click="HandleBrowseRecordingFolderClick"
+                                    Content="参照..." />
+                        </Grid>
+                        <TextBlock Margin="0,6,0,0"
+                                   FontSize="12"
+                                   Foreground="#FF6B6B"
+                                   Text="{Binding RecordingRetentionWarningText}" />
+                    </StackPanel>
                 </Grid>
             </Border>
 

@@ -66,9 +66,13 @@ public sealed class YouTubeLiveDetector : ILiveDetector
 
             return await CheckWatchPageAsync(candidateId, cancellationToken).ConfigureAwait(false);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
+        }
+        catch (OperationCanceledException ex)
+        {
+            return LiveCheckResult.Error(ex.Message);
         }
         catch (Exception ex)
         {

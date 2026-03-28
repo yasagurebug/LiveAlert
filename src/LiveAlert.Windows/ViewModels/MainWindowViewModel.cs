@@ -10,6 +10,7 @@ public sealed class MainWindowViewModel : BindableBase, IDisposable
 {
     private readonly ConfigManager _configManager;
     private readonly ObservableCollection<AlertEditorViewModel> _alerts = new();
+    private readonly ObservableCollection<RecordingJobStatusViewModel> _recordingJobs = new();
     private CancellationTokenSource? _saveCts;
     private bool _suppressSave;
     private AlertEditorViewModel? _selectedAlert;
@@ -21,6 +22,10 @@ public sealed class MainWindowViewModel : BindableBase, IDisposable
     private int _bandHeightPx = 220;
     private string _bandPosition = "top";
     private bool _windowsAutoStart;
+    private bool _liveRecordingEnabled;
+    private string _recordingSaveDirectory = string.Empty;
+    private int _recordingRetentionDays = 30;
+    private string _lastRecordingCleanupDate = string.Empty;
 
     public MainWindowViewModel(ConfigManager configManager)
     {
@@ -35,6 +40,8 @@ public sealed class MainWindowViewModel : BindableBase, IDisposable
     public string ConfigPath { get; }
 
     public ObservableCollection<AlertEditorViewModel> Alerts => _alerts;
+
+    public ObservableCollection<RecordingJobStatusViewModel> RecordingJobs => _recordingJobs;
 
     public AlertEditorViewModel? SelectedAlert
     {
@@ -65,6 +72,33 @@ public sealed class MainWindowViewModel : BindableBase, IDisposable
             }
         }
     }
+
+    public bool LiveRecordingEnabled
+    {
+        get => _liveRecordingEnabled;
+        set
+        {
+            if (SetProperty(ref _liveRecordingEnabled, value))
+            {
+                QueueSave();
+            }
+        }
+    }
+
+    public string RecordingSaveDirectory
+    {
+        get => _recordingSaveDirectory;
+        set
+        {
+            if (SetProperty(ref _recordingSaveDirectory, value))
+            {
+                QueueSave();
+            }
+        }
+    }
+
+    public string RecordingRetentionWarningText =>
+        $"当該フォルダの内容は{NormalizeRecordingRetentionDays(_recordingRetentionDays)}日で削除されます。";
 
     public int PollIntervalSec
     {
@@ -153,6 +187,11 @@ public sealed class MainWindowViewModel : BindableBase, IDisposable
             BandHeightPx = config.Options.BandHeightPx;
             BandPosition = NormalizePosition(config.Options.BandPosition);
             WindowsAutoStart = config.Options.WindowsAutoStart;
+            LiveRecordingEnabled = config.Options.LiveRecordingEnabled;
+            RecordingSaveDirectory = config.Options.RecordingSaveDirectory ?? string.Empty;
+            _recordingRetentionDays = NormalizeRecordingRetentionDays(config.Options.RecordingRetentionDays);
+            _lastRecordingCleanupDate = config.Options.LastRecordingCleanupDate ?? string.Empty;
+            RaisePropertyChanged(nameof(RecordingRetentionWarningText));
         }
         finally
         {
@@ -211,9 +250,48 @@ public sealed class MainWindowViewModel : BindableBase, IDisposable
                 AudioMode = "alarm",
                 DebugMode = false,
                 DedupeMinutes = 5,
-                WindowsAutoStart = WindowsAutoStart
+                WindowsAutoStart = WindowsAutoStart,
+                LiveRecordingEnabled = LiveRecordingEnabled,
+                RecordingSaveDirectory = RecordingSaveDirectory.Trim(),
+                RecordingRetentionDays = NormalizeRecordingRetentionDays(_recordingRetentionDays),
+                LastRecordingCleanupDate = _lastRecordingCleanupDate
             }
         };
+    }
+
+    public void SetRecordingJobs(IReadOnlyList<(string VideoId, string Label, string StateText)> jobs)
+    {
+        _recordingJobs.Clear();
+        foreach (var job in jobs.OrderBy(job => job.Label, StringComparer.CurrentCulture))
+        {
+            _recordingJobs.Add(new RecordingJobStatusViewModel
+            {
+                VideoId = job.VideoId,
+                Label = job.Label,
+                StateText = job.StateText
+            });
+        }
+    }
+
+    public void SetLiveRecordingEnabledSilently(bool enabled)
+    {
+        _suppressSave = true;
+        try
+        {
+            LiveRecordingEnabled = enabled;
+        }
+        finally
+        {
+            _suppressSave = false;
+        }
+
+        QueueSave();
+    }
+
+    public void SetLastRecordingCleanupDate(string value)
+    {
+        _lastRecordingCleanupDate = value ?? string.Empty;
+        QueueSave();
     }
 
     public void Dispose()
@@ -301,6 +379,11 @@ public sealed class MainWindowViewModel : BindableBase, IDisposable
             "bottom" => "bottom",
             _ => "top"
         };
+    }
+
+    private static int NormalizeRecordingRetentionDays(int value)
+    {
+        return Math.Clamp(value <= 0 ? 30 : value, 1, 3650);
     }
 
     private static string BuildAppDisplayName()

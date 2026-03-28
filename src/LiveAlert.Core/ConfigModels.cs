@@ -97,6 +97,18 @@ public sealed class AlertOptions
 
     [JsonPropertyName("windowsAutoStart")]
     public bool WindowsAutoStart { get; set; }
+
+    [JsonPropertyName("liveRecordingEnabled")]
+    public bool LiveRecordingEnabled { get; set; }
+
+    [JsonPropertyName("recordingSaveDirectory")]
+    public string RecordingSaveDirectory { get; set; } = string.Empty;
+
+    [JsonPropertyName("recordingRetentionDays")]
+    public int RecordingRetentionDays { get; set; } = 30;
+
+    [JsonPropertyName("lastRecordingCleanupDate")]
+    public string LastRecordingCleanupDate { get; set; } = string.Empty;
 }
 
 public static class ConfigDefaults

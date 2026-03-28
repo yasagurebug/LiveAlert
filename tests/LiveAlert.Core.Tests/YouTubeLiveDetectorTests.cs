@@ -103,6 +103,33 @@ public sealed class YouTubeLiveDetectorTests
         Assert.NotNull(result.ErrorMessage);
     }
 
+    [Fact]
+    public async Task TimeoutLikeOperationCanceled_ReturnsError()
+    {
+        var handler = new StubHandler(_ => throw new TaskCanceledException("timeout"));
+        var client = new HttpClient(handler);
+        var detector = new YouTubeLiveDetector(client);
+        var alert = new AlertConfig { Url = "https://www.youtube.com/channel/UC123" };
+
+        var result = await detector.CheckLiveAsync(alert, CancellationToken.None);
+
+        Assert.True(result.IsError);
+        Assert.Contains("timeout", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ExternalCancellation_Rethrows()
+    {
+        var cts = new CancellationTokenSource();
+        cts.Cancel();
+        var handler = new StubHandler(_ => throw new OperationCanceledException(cts.Token));
+        var client = new HttpClient(handler);
+        var detector = new YouTubeLiveDetector(client);
+        var alert = new AlertConfig { Url = "https://www.youtube.com/channel/UC123" };
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => detector.CheckLiveAsync(alert, cts.Token));
+    }
+
     private sealed class StubHandler : HttpMessageHandler
     {
         private readonly Func<HttpRequestMessage, HttpResponseMessage> _handler;

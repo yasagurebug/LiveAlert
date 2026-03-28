@@ -56,7 +56,11 @@ public sealed class ConfigManagerTests
                 AudioMode = "manner",
                 LoopIntervalSec = 12,
                 DedupeMinutes = 7,
-                WindowsAutoStart = true
+                WindowsAutoStart = true,
+                LiveRecordingEnabled = true,
+                RecordingSaveDirectory = @"C:\Recordings",
+                RecordingRetentionDays = 45,
+                LastRecordingCleanupDate = "2026-03-28"
             }
         };
 
@@ -73,6 +77,10 @@ public sealed class ConfigManagerTests
         Assert.Equal("manner", reloaded.Current.Options.NotificationMode);
         Assert.Equal(12, reloaded.Current.Options.LoopIntervalSec);
         Assert.True(reloaded.Current.Options.WindowsAutoStart);
+        Assert.True(reloaded.Current.Options.LiveRecordingEnabled);
+        Assert.Equal(@"C:\Recordings", reloaded.Current.Options.RecordingSaveDirectory);
+        Assert.Equal(45, reloaded.Current.Options.RecordingRetentionDays);
+        Assert.Equal("2026-03-28", reloaded.Current.Options.LastRecordingCleanupDate);
     }
 
     [Fact]

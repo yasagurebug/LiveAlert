@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using LiveAlert.Core;
 using LiveAlert.Windows.ViewModels;
 using LiveAlert.Windows.Views;
+using Forms = System.Windows.Forms;
 
 namespace LiveAlert.Windows.Services;
 
@@ -14,12 +15,16 @@ public sealed class AppController : IDisposable
 {
     private readonly ConfigManager _configManager;
     private readonly AlertMonitor _monitor;
+    private readonly YouTubeLiveDetector _youtubeDetector;
     private readonly AlertQueue _queue = new();
     private readonly TrayIconService _trayIcon;
     private readonly AlertAudioPlayer _audioPlayer;
     private readonly SessionStateMonitor _sessionMonitor;
     private readonly StartupRegistrationService _startupRegistration;
     private readonly NicoEasterEggController _nicoEasterEgg;
+    private readonly RecordingManager _recordingManager;
+    private readonly RecordingEnvironmentValidator _recordingValidator;
+    private readonly RetentionCleaner _retentionCleaner;
     private readonly HttpClient _httpClient;
     private readonly CancellationTokenSource _shutdownCts = new();
     private CancellationTokenSource? _monitoringCts;
@@ -28,6 +33,8 @@ public sealed class AppController : IDisposable
     private MainWindow? _mainWindow;
     private AlertQueueItem? _currentItem;
     private volatile bool _monitorLoopObservedSuccessfulCycle;
+    private int _cleanupRunning;
+    private bool _isLoadingViewModel;
 
     public AppController()
     {
@@ -38,12 +45,16 @@ public sealed class AppController : IDisposable
         {
             Timeout = TimeSpan.FromSeconds(15)
         };
-        _monitor = new AlertMonitor(_configManager, new YouTubeLiveDetector(_httpClient));
+        _youtubeDetector = new YouTubeLiveDetector(_httpClient);
+        _monitor = new AlertMonitor(_configManager, _youtubeDetector);
         _trayIcon = new TrayIconService();
         _audioPlayer = new AlertAudioPlayer();
         _sessionMonitor = new SessionStateMonitor();
         _startupRegistration = new StartupRegistrationService();
         _nicoEasterEgg = new NicoEasterEggController();
+        _recordingManager = new RecordingManager(new YtDlpRunner(), new RecordingFinalizer(), _youtubeDetector);
+        _recordingValidator = new RecordingEnvironmentValidator(new ExternalCommandProbe());
+        _retentionCleaner = new RetentionCleaner();
         ViewModel = new MainWindowViewModel(_configManager);
         ViewModel.PropertyChanged += HandleViewModelPropertyChanged;
 
@@ -52,6 +63,9 @@ public sealed class AppController : IDisposable
         _monitor.MonitoringSummaryUpdated += HandleMonitoringSummaryUpdated;
         _monitor.MonitoringFailureDetected += HandleMonitoringFailureDetected;
         _monitor.MonitoringDebug += message => AppLog.Info(message);
+        _recordingManager.StatusesChanged += HandleRecordingStatusesChanged;
+        _recordingManager.RecordingStarted += HandleRecordingStarted;
+        _recordingManager.RecordingFailed += HandleRecordingFailed;
 
         _trayIcon.OpenSettingsRequested += ShowSettingsWindow;
         _trayIcon.StopAlertRequested += () => StopCurrentAlert(false);
@@ -75,7 +89,16 @@ public sealed class AppController : IDisposable
     {
         AppLog.Info("Windows app initialize");
         await _configManager.LoadAsync(_shutdownCts.Token);
-        ViewModel.Load(_configManager.Current);
+        _isLoadingViewModel = true;
+        try
+        {
+            ViewModel.Load(_configManager.Current);
+        }
+        finally
+        {
+            _isLoadingViewModel = false;
+        }
+        await ValidateRecordingEnvironmentAsync(showDialog: false).ConfigureAwait(false);
         _startupRegistration.SetEnabled(ViewModel.WindowsAutoStart);
         StartMonitoring();
     }
@@ -171,6 +194,7 @@ public sealed class AppController : IDisposable
     public void Dispose()
     {
         StopMonitoring();
+        _recordingManager.StopAllForApplicationExit();
         _shutdownCts.Cancel();
         _overlayWindow?.Close();
         _nicoEasterEgg.Dispose();
@@ -290,6 +314,7 @@ public sealed class AppController : IDisposable
         {
             _queue.Enqueue(new AlertQueueItem(alertEvent, alertEvent.DetectedAt));
             AppLog.Info($"Alert detected label={SafeLabel(alertEvent.Alert.Label)} videoId={alertEvent.VideoId}");
+            _recordingManager.TryStart(alertEvent, BuildRecordingSettings(), _shutdownCts.Token);
             ProcessQueue();
         });
     }
@@ -320,6 +345,7 @@ public sealed class AppController : IDisposable
             ViewModel.StatusText = text;
             _trayIcon.UpdateStatusText(text);
         });
+        _ = RunRetentionCleanupIfNeededAsync();
     }
 
     private void HandleMonitoringFailureDetected(MonitoringFailure failure)
@@ -486,18 +512,140 @@ public sealed class AppController : IDisposable
 
     private void HandleViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (!string.Equals(e.PropertyName, nameof(MainWindowViewModel.WindowsAutoStart), StringComparison.Ordinal))
+        if (_isLoadingViewModel)
+        {
+            return;
+        }
+
+        if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.WindowsAutoStart), StringComparison.Ordinal))
+        {
+            try
+            {
+                _startupRegistration.SetEnabled(ViewModel.WindowsAutoStart);
+            }
+            catch (Exception ex)
+            {
+                AppLog.Warn($"Startup registration failed: {ex.Message}");
+            }
+
+            return;
+        }
+
+        if (string.Equals(e.PropertyName, nameof(MainWindowViewModel.LiveRecordingEnabled), StringComparison.Ordinal) &&
+            ViewModel.LiveRecordingEnabled)
+        {
+            _ = ValidateRecordingEnvironmentAsync(showDialog: true);
+        }
+    }
+
+    private RecordingSettings BuildRecordingSettings()
+    {
+        var options = ViewModel.BuildConfig().Options;
+        return new RecordingSettings(
+            options.LiveRecordingEnabled,
+            options.RecordingSaveDirectory,
+            options.RecordingRetentionDays,
+            AppPaths.CookiesPath);
+    }
+
+    private async Task ValidateRecordingEnvironmentAsync(bool showDialog)
+    {
+        if (!ViewModel.LiveRecordingEnabled)
+        {
+            return;
+        }
+
+        var result = await _recordingValidator
+            .ValidateAsync(ViewModel.RecordingSaveDirectory, _shutdownCts.Token)
+            .ConfigureAwait(false);
+        if (result.Success)
+        {
+            return;
+        }
+
+        await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+        {
+            ViewModel.SetLiveRecordingEnabledSilently(false);
+            if (showDialog)
+            {
+                System.Windows.MessageBox.Show(
+                    _mainWindow,
+                    result.Message,
+                    "ライブ録画",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Warning);
+            }
+        });
+    }
+
+    private void HandleRecordingStatusesChanged(IReadOnlyList<RecordingJobStatusSnapshot> statuses)
+    {
+        _ = System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+        {
+            ViewModel.SetRecordingJobs(statuses.Select(status => (status.VideoId, status.Label, status.StateText)).ToList());
+        });
+    }
+
+    public void StopRecording(string videoId)
+    {
+        _recordingManager.Stop(videoId);
+    }
+
+    private void HandleRecordingStarted(string label)
+    {
+        _ = System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+        {
+            _trayIcon.ShowBalloon("LiveAlert", $"ライブ録画を開始しました: {label}", Forms.ToolTipIcon.Info);
+        });
+    }
+
+    private void HandleRecordingFailed(string label)
+    {
+        _ = System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+        {
+            _trayIcon.ShowBalloon("LiveAlert", $"ライブ録画に失敗しました: {label}", Forms.ToolTipIcon.Warning);
+        });
+    }
+
+    private async Task RunRetentionCleanupIfNeededAsync()
+    {
+        if (Interlocked.Exchange(ref _cleanupRunning, 1) != 0)
         {
             return;
         }
 
         try
         {
-            _startupRegistration.SetEnabled(ViewModel.WindowsAutoStart);
+            var options = ViewModel.BuildConfig().Options;
+            if (string.IsNullOrWhiteSpace(options.RecordingSaveDirectory))
+            {
+                return;
+            }
+
+            var today = DateTime.Now.ToString("yyyy-MM-dd");
+            if (string.Equals(options.LastRecordingCleanupDate, today, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            var deleted = _retentionCleaner.Cleanup(
+                options.RecordingSaveDirectory,
+                options.RecordingRetentionDays,
+                DateTimeOffset.Now);
+            AppLog.Info(
+                $"Retention cleanup completed directory={options.RecordingSaveDirectory} deletedCount={deleted} retentionDays={options.RecordingRetentionDays}");
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                ViewModel.SetLastRecordingCleanupDate(today);
+            });
         }
         catch (Exception ex)
         {
-            AppLog.Warn($"Startup registration failed: {ex.Message}");
+            AppLog.Warn($"Retention cleanup failed: {ex.Message}");
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _cleanupRunning, 0);
         }
     }
 

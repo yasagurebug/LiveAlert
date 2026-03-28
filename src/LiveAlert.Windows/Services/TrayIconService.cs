@@ -68,6 +68,14 @@ public sealed class TrayIconService : IDisposable
         _notifyIcon.Text = Truncate(text, 63);
     }
 
+    public void ShowBalloon(string title, string text, ToolTipIcon icon)
+    {
+        _notifyIcon.BalloonTipTitle = Truncate(title, 63);
+        _notifyIcon.BalloonTipText = Truncate(text, 255);
+        _notifyIcon.BalloonTipIcon = icon;
+        _notifyIcon.ShowBalloonTip(5000);
+    }
+
     public void Dispose()
     {
         _notifyIcon.Visible = false;

@@ -50,6 +50,29 @@ public partial class MainWindow : Window
         await _controller.FlushConfigAsync();
     }
 
+    private async void HandleBrowseRecordingFolderClick(object sender, RoutedEventArgs e)
+    {
+        var folder = PickFolder(_controller.ViewModel.RecordingSaveDirectory);
+        if (folder is null)
+        {
+            return;
+        }
+
+        _controller.ViewModel.RecordingSaveDirectory = folder;
+        await _controller.FlushConfigAsync();
+    }
+
+    private void HandleStopRecordingClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: ViewModels.RecordingJobStatusViewModel job } ||
+            string.IsNullOrWhiteSpace(job.VideoId))
+        {
+            return;
+        }
+
+        _controller.StopRecording(job.VideoId);
+    }
+
     private async void HandlePickBackgroundColorClick(object sender, RoutedEventArgs e)
     {
         if (_controller.ViewModel.SelectedAlert is null)
@@ -105,6 +128,19 @@ public partial class MainWindow : Window
         };
 
         return dialog.ShowDialog() == true ? dialog.FileName : null;
+    }
+
+    private static string? PickFolder(string currentPath)
+    {
+        using var dialog = new Forms.FolderBrowserDialog
+        {
+            ShowNewFolderButton = true,
+            SelectedPath = string.IsNullOrWhiteSpace(currentPath) ? string.Empty : currentPath
+        };
+
+        return dialog.ShowDialog() == Forms.DialogResult.OK
+            ? dialog.SelectedPath
+            : null;
     }
 
     private static string? PickColor(string currentHex)

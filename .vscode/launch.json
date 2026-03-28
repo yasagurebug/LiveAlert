@@ -1,0 +1,25 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "LiveAlert.Windows Debug",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build LiveAlert.Windows Debug",
+      "program": "${workspaceFolder}/src/LiveAlert.Windows/bin/Debug/net8.0-windows/LiveAlert.Windows.exe",
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole",
+      "stopAtEntry": false
+    },
+    {
+      "name": "LiveAlert.Windows Release",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build LiveAlert.Windows Release",
+      "program": "${workspaceFolder}/src/LiveAlert.Windows/bin/Release/net8.0-windows/LiveAlert.Windows.exe",
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole",
+      "stopAtEntry": false
+    }
+  ]
+}

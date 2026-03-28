@@ -35,5 +35,9 @@ public sealed class ConfigDefaultsTests
         Assert.Equal(-1, options.ExpandedAlertIndex);
         Assert.False(options.DebugMode);
         Assert.False(options.WindowsAutoStart);
+        Assert.False(options.LiveRecordingEnabled);
+        Assert.Equal(string.Empty, options.RecordingSaveDirectory);
+        Assert.Equal(30, options.RecordingRetentionDays);
+        Assert.Equal(string.Empty, options.LastRecordingCleanupDate);
     }
 }
