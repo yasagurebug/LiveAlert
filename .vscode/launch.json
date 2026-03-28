@@ -2,6 +2,15 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "LiveAlert.Android Debug",
+      "type": "maui",
+      "request": "launch",
+      "project": "${workspaceFolder}/src/LiveAlert.Android/LiveAlert.Android.csproj",
+      "configuration": "Debug",
+      "targetFramework": "net8.0-android34.0",
+      "preLaunchTask": "maui: Build"
+    },
+    {
       "name": "LiveAlert.Windows Debug",
       "type": "coreclr",
       "request": "launch",

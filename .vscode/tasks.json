@@ -25,6 +25,107 @@
         "Release"
       ],
       "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "publish LiveAlert.Android Debug APK",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "publish",
+        "${workspaceFolder}/src/LiveAlert.Android/LiveAlert.Android.csproj",
+        "-c",
+        "Debug",
+        "-f",
+        "net8.0-android34.0"
+      ],
+      "group": "build",
+      "problemMatcher": "$msCompile"
+    },
+    {
+      "label": "start Android emulator",
+      "type": "process",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "Start-Process -FilePath \"${env:LOCALAPPDATA}\\Android\\Sdk\\emulator\\emulator.exe\" -ArgumentList @('-avd','pixel_7_-_api_35')"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "wait for Android emulator",
+      "type": "process",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "& \"${env:LOCALAPPDATA}\\Android\\Sdk\\platform-tools\\adb.exe\" wait-for-device; do { Start-Sleep -Seconds 2; $boot = (& \"${env:LOCALAPPDATA}\\Android\\Sdk\\platform-tools\\adb.exe\" shell getprop sys.boot_completed 2>$null).Trim(); Write-Host \"boot=$boot\" } until ($boot -eq '1')"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "install LiveAlert.Android Debug APK",
+      "type": "process",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "& \"${env:LOCALAPPDATA}\\Android\\Sdk\\platform-tools\\adb.exe\" install -r \"${workspaceFolder}\\src\\LiveAlert.Android\\bin\\Debug\\net8.0-android34.0\\publish\\com.yasagurebug.livealert-Signed.apk\""
+      ],
+      "dependsOn": [
+        "publish LiveAlert.Android Debug APK",
+        "start Android emulator",
+        "wait for Android emulator"
+      ],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    },
+    {
+      "label": "launch LiveAlert.Android",
+      "type": "process",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "& \"${env:LOCALAPPDATA}\\Android\\Sdk\\platform-tools\\adb.exe\" shell monkey -p com.yasagurebug.livealert -c android.intent.category.LAUNCHER 1"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "run LiveAlert.Android Debug on emulator",
+      "dependsOn": [
+        "install LiveAlert.Android Debug APK",
+        "launch LiveAlert.Android"
+      ],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    },
+    {
+      "label": "logcat LiveAlert.Android",
+      "type": "process",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "& \"${env:LOCALAPPDATA}\\Android\\Sdk\\platform-tools\\adb.exe\" logcat -v time"
+      ],
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": false
+      },
+      "problemMatcher": []
     }
   ]
 }
