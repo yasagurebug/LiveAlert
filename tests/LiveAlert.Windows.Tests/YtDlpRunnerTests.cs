@@ -14,11 +14,14 @@ public sealed class YtDlpRunnerTests
             "https://www.youtube.com/watch?v=video123",
             @"C:\Recordings\out.ts",
             @"C:\Recordings\out.mp4",
+            @"C:\Recordings\out_ytdlp.log",
+            @"C:\Recordings\out_ffmpeg.log",
             null);
 
         var arguments = YtDlpRunner.BuildArguments(context);
 
         Assert.Contains("-f \"bestvideo*+bestaudio/best\"", arguments);
+        Assert.Contains("--no-progress", arguments);
         Assert.Contains("-o \"C:\\Recordings\\out.ts\"", arguments);
         Assert.Contains("\"https://www.youtube.com/watch?v=video123\"", arguments);
     }
@@ -32,6 +35,8 @@ public sealed class YtDlpRunnerTests
             "https://www.youtube.com/watch?v=video123",
             @"C:\Recordings\out.ts",
             @"C:\Recordings\out.mp4",
+            @"C:\Recordings\out_ytdlp.log",
+            @"C:\Recordings\out_ffmpeg.log",
             @"C:\Users\main\AppData\Roaming\LiveAlert\cookies.txt");
 
         var arguments = YtDlpRunner.BuildArguments(context);

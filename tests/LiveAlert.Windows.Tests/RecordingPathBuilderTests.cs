@@ -25,5 +25,7 @@ public sealed class RecordingPathBuilderTests
 
         Assert.EndsWith(@"20260328_100509_しののめ_にこ_video_123.ts", context.TsPath);
         Assert.EndsWith(@"20260328_100509_しののめ_にこ_video_123.mp4", context.Mp4Path);
+        Assert.EndsWith(@"20260328_100509_しののめ_にこ_video_123_ytdlp.log", context.YtDlpLogPath);
+        Assert.EndsWith(@"20260328_100509_しののめ_にこ_video_123_ffmpeg.log", context.FfmpegLogPath);
     }
 }

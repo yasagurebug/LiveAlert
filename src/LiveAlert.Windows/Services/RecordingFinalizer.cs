@@ -6,7 +6,7 @@ public sealed class RecordingFinalizer
     {
         var arguments =
             $"-y -i {Quote(context.TsPath)} -c copy {Quote(context.Mp4Path)}";
-        return ProcessExecutionHelper.StartAndWait("ffmpeg", arguments, cancellationToken);
+        return ProcessExecutionHelper.StartAndWait("ffmpeg", arguments, context.FfmpegLogPath, cancellationToken);
     }
 
     private static string Quote(string value)

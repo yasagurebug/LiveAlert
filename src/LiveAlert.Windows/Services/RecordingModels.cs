@@ -37,6 +37,8 @@ public sealed record RecordingJobContext(
     string WatchUrl,
     string TsPath,
     string Mp4Path,
+    string YtDlpLogPath,
+    string FfmpegLogPath,
     string? CookiesPath);
 
 public sealed record ExternalProcessResult(
@@ -44,6 +46,7 @@ public sealed record ExternalProcessResult(
     int? ExitCode,
     string StandardOutput,
     string StandardError,
+    string? LogPath = null,
     Exception? Exception = null);
 
 public sealed record ExternalProcessStartResult(

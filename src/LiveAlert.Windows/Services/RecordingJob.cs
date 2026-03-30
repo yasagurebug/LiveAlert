@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.IO;
-using System.Text;
 using LiveAlert.Core;
 
 namespace LiveAlert.Windows.Services;
@@ -115,11 +114,31 @@ public sealed class RecordingJob
 
             if (ytDlpResult.ExitCode is not 0)
             {
-                LogFailure("yt-dlp異常終了", ytDlpResult);
-                throw new InvalidOperationException($"yt-dlp exited with code {ytDlpResult.ExitCode}");
+                if (!HasRecordedContent(_context.TsPath))
+                {
+                    LogFailure("yt-dlp異常終了", ytDlpResult);
+                    throw new InvalidOperationException($"yt-dlp exited with code {ytDlpResult.ExitCode}");
+                }
+
+                AppLog.Warn(
+                    $"Recording continuing to finalize label={_context.Label} videoId={_context.VideoId} exitCode={ytDlpResult.ExitCode} tsPath={_context.TsPath}");
             }
 
             break;
+        }
+
+        if (!HasRecordedContent(_context.TsPath))
+        {
+            if (IsStopRequested())
+            {
+                AppLog.Info(
+                    $"Recording stopped without finalize label={_context.Label} videoId={_context.VideoId} reason={GetStopReasonText()} tsPath={_context.TsPath}");
+                return;
+            }
+
+            var result = new ExternalProcessResult(true, 0, string.Empty, string.Empty, _context.YtDlpLogPath);
+            LogFailure("録画データ未生成", result);
+            throw new InvalidOperationException("recording data was not created");
         }
 
         _stateChanged(RecordingJobState.Finalizing);
@@ -150,7 +169,7 @@ public sealed class RecordingJob
         var started = _ytDlpRunner.Start(_context);
         if (!started.Started || started.Process is null)
         {
-            return new ExternalProcessResult(false, null, string.Empty, string.Empty, started.Exception);
+            return new ExternalProcessResult(false, null, string.Empty, string.Empty, _context.YtDlpLogPath, started.Exception);
         }
 
         lock (_syncRoot)
@@ -166,27 +185,14 @@ public sealed class RecordingJob
 
         try
         {
-            var stdoutBuilder = new StringBuilder();
-            var stderrBuilder = new StringBuilder();
-            started.Process.OutputDataReceived += (_, args) =>
-            {
-                if (args.Data is not null)
-                {
-                    stdoutBuilder.AppendLine(args.Data);
-                }
-            };
-            started.Process.ErrorDataReceived += (_, args) =>
-            {
-                if (args.Data is not null)
-                {
-                    stderrBuilder.AppendLine(args.Data);
-                }
-            };
-
-            started.Process.BeginOutputReadLine();
-            started.Process.BeginErrorReadLine();
-            await started.Process.WaitForExitAsync(_cancellationToken).ConfigureAwait(false);
-            return new ExternalProcessResult(true, started.Process.ExitCode, stdoutBuilder.ToString(), stderrBuilder.ToString());
+            return await ProcessExecutionHelper
+                .WaitForExitWithLoggingAsync(
+                    started.Process,
+                    "yt-dlp",
+                    YtDlpRunner.BuildArguments(_context),
+                    _context.YtDlpLogPath,
+                    _cancellationToken)
+                .ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (_cancellationToken.IsCancellationRequested && !IsStopRequested())
         {
@@ -245,10 +251,22 @@ public sealed class RecordingJob
     private void LogFailure(string failureType, ExternalProcessResult result)
     {
         var detail = result.Exception?.Message
-            ?? result.StandardError.Trim()
+            ?? result.LogPath
             ?? string.Empty;
         AppLog.Error(
-            $"Recording failed label={_context.Label} videoId={_context.VideoId} failureType={failureType} exitCode={result.ExitCode?.ToString() ?? "(null)"} stderr={result.StandardError.Trim()} detail={detail}",
+            $"Recording failed label={_context.Label} videoId={_context.VideoId} failureType={failureType} exitCode={result.ExitCode?.ToString() ?? "(null)"} logPath={result.LogPath ?? "(none)"} detail={detail}",
             result.Exception);
+    }
+
+    internal static bool HasRecordedContent(string tsPath)
+    {
+        try
+        {
+            return File.Exists(tsPath) && new FileInfo(tsPath).Length > 0;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }

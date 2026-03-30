@@ -16,7 +16,7 @@ public sealed class YtDlpRunner
             ? string.Empty
             : $" --cookies {Quote(context.CookiesPath)}";
         return
-            $"--no-part --hls-use-mpegts -f {Quote("bestvideo*+bestaudio/best")} -o {Quote(context.TsPath)}{cookiesArgument} {Quote(context.WatchUrl)}";
+            $"--no-part --no-progress --hls-use-mpegts -f {Quote("bestvideo*+bestaudio/best")} -o {Quote(context.TsPath)}{cookiesArgument} {Quote(context.WatchUrl)}";
     }
 
     private static string Quote(string value)

@@ -14,6 +14,8 @@ public static class RecordingPathBuilder
             $"https://www.youtube.com/watch?v={videoId}",
             Path.Combine(saveDirectory, $"{baseName}.ts"),
             Path.Combine(saveDirectory, $"{baseName}.mp4"),
+            Path.Combine(saveDirectory, $"{baseName}_ytdlp.log"),
+            Path.Combine(saveDirectory, $"{baseName}_ffmpeg.log"),
             cookiesPath);
     }
 
