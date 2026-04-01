@@ -22,6 +22,7 @@ public sealed class YtDlpRunnerTests
 
         Assert.Contains("-f \"bestvideo*+bestaudio/best\"", arguments);
         Assert.Contains("--no-progress", arguments);
+        Assert.Contains("--downloader-args \"ffmpeg_i:-loglevel error\"", arguments);
         Assert.Contains("-o \"C:\\Recordings\\out.ts\"", arguments);
         Assert.Contains("\"https://www.youtube.com/watch?v=video123\"", arguments);
     }
