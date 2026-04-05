@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 using LiveAlert.Core;
 
 namespace LiveAlert.Windows.Services;
@@ -95,6 +96,14 @@ public sealed class RecordingJob
             {
                 AppLog.Info($"Recording stopped label={_context.Label} videoId={_context.VideoId} reason={GetStopReasonText()}");
                 break;
+            }
+
+            if (ytDlpResult.ExitCode is not 0 &&
+                !HasRecordedContent(_context.TsPath) &&
+                IsNonRetriableYtDlpFailure(_context.YtDlpLogPath))
+            {
+                LogFailure("yt-dlp視聴権限エラー", ytDlpResult);
+                throw new InvalidOperationException($"yt-dlp exited with code {ytDlpResult.ExitCode}");
             }
 
             var liveStillRunning = await IsStillLiveAsync().ConfigureAwait(false);
@@ -268,5 +277,45 @@ public sealed class RecordingJob
         {
             return false;
         }
+    }
+
+    internal static bool IsNonRetriableYtDlpFailure(string? logPath)
+    {
+        if (string.IsNullOrWhiteSpace(logPath) || !File.Exists(logPath))
+        {
+            return false;
+        }
+
+        try
+        {
+            var tail = ReadLogTail(logPath, maxBytes: 16 * 1024);
+            return tail.Contains("available to this channel's members", StringComparison.OrdinalIgnoreCase) ||
+                tail.Contains("members-only content", StringComparison.OrdinalIgnoreCase) ||
+                tail.Contains("Join this channel to get access", StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static string ReadLogTail(string logPath, int maxBytes)
+    {
+        using var stream = new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        var byteCount = (int)Math.Min(stream.Length, maxBytes);
+        var buffer = new byte[byteCount];
+        if (byteCount == 0)
+        {
+            return string.Empty;
+        }
+
+        stream.Seek(-byteCount, SeekOrigin.End);
+        var read = stream.Read(buffer, 0, byteCount);
+        if (read <= 0)
+        {
+            return string.Empty;
+        }
+
+        return Encoding.UTF8.GetString(buffer, 0, read);
     }
 }
