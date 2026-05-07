@@ -14,6 +14,7 @@ public sealed class YouTubeLiveDetector : ILiveDetector
     private readonly HttpClient _httpClient;
     private static readonly Regex IsLiveNowRegex = new("\"isLiveNow\":(true|false)", RegexOptions.Compiled);
     private static readonly Regex InitialDataRegex = new(@"var ytInitialData\s*=\s*(\{.*?\});", RegexOptions.Compiled | RegexOptions.Singleline);
+    private static readonly Regex VideoIdInStringRegex = new(@"(?:/vi/|[?&]v=)([A-Za-z0-9_-]{11})", RegexOptions.Compiled);
 
     public YouTubeLiveDetector(HttpClient httpClient)
     {
@@ -177,6 +178,13 @@ public sealed class YouTubeLiveDetector : ILiveDetector
                     }
                 }
 
+                if (IsLikelyVideoItem(element) &&
+                    HasLiveBadge(element) &&
+                    TryFindVideoIdReference(element, out var liveItemVideoId))
+                {
+                    return liveItemVideoId;
+                }
+
                 foreach (var property in element.EnumerateObject())
                 {
                     var found = FindLiveVideoId(property.Value);
@@ -204,6 +212,154 @@ public sealed class YouTubeLiveDetector : ILiveDetector
         }
 
         return null;
+    }
+
+    private static bool IsLikelyVideoItem(JsonElement element)
+    {
+        return element.TryGetProperty("richItemRenderer", out _) ||
+               element.TryGetProperty("lockupViewModel", out _) ||
+               element.TryGetProperty("videoRenderer", out _) ||
+               element.TryGetProperty("gridVideoRenderer", out _) ||
+               element.TryGetProperty("compactVideoRenderer", out _);
+    }
+
+    private static bool HasLiveBadge(JsonElement element)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+            {
+                if (element.TryGetProperty("thumbnailBadgeViewModel", out var badge) &&
+                    badge.ValueKind == JsonValueKind.Object &&
+                    IsLiveThumbnailBadge(badge))
+                {
+                    return true;
+                }
+
+                foreach (var property in element.EnumerateObject())
+                {
+                    if (HasLiveBadge(property.Value))
+                    {
+                        return true;
+                    }
+                }
+
+                break;
+            }
+            case JsonValueKind.Array:
+            {
+                foreach (var item in element.EnumerateArray())
+                {
+                    if (HasLiveBadge(item))
+                    {
+                        return true;
+                    }
+                }
+
+                break;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsLiveThumbnailBadge(JsonElement badge)
+    {
+        if (badge.TryGetProperty("badgeStyle", out var badgeStyle) &&
+            badgeStyle.ValueKind == JsonValueKind.String &&
+            badgeStyle.GetString()?.Equals("THUMBNAIL_OVERLAY_BADGE_STYLE_LIVE", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return true;
+        }
+
+        if (badge.TryGetProperty("text", out var text) &&
+            text.ValueKind == JsonValueKind.String &&
+            text.GetString()?.Contains("ライブ", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryFindVideoIdReference(JsonElement element, out string videoId)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+            {
+                foreach (var property in element.EnumerateObject())
+                {
+                    if (property.Value.ValueKind == JsonValueKind.String &&
+                        TryExtractVideoIdFromString(property.Value.GetString(), out videoId))
+                    {
+                        return true;
+                    }
+                }
+
+                foreach (var property in element.EnumerateObject())
+                {
+                    if (TryFindVideoIdReference(property.Value, out videoId))
+                    {
+                        return true;
+                    }
+                }
+
+                break;
+            }
+            case JsonValueKind.Array:
+            {
+                foreach (var item in element.EnumerateArray())
+                {
+                    if (TryFindVideoIdReference(item, out videoId))
+                    {
+                        return true;
+                    }
+                }
+
+                break;
+            }
+            case JsonValueKind.String:
+                if (TryExtractVideoIdFromString(element.GetString(), out videoId))
+                {
+                    return true;
+                }
+                break;
+        }
+
+        videoId = string.Empty;
+        return false;
+    }
+
+    private static bool TryExtractVideoIdFromString(string? value, out string videoId)
+    {
+        if (!string.IsNullOrEmpty(value))
+        {
+            if (value.Length == 11 && value.All(IsVideoIdChar))
+            {
+                videoId = value;
+                return true;
+            }
+
+            var match = VideoIdInStringRegex.Match(value);
+            if (match.Success)
+            {
+                videoId = match.Groups[1].Value;
+                return true;
+            }
+        }
+
+        videoId = string.Empty;
+        return false;
+    }
+
+    private static bool IsVideoIdChar(char value)
+    {
+        return value is >= 'A' and <= 'Z' ||
+               value is >= 'a' and <= 'z' ||
+               value is >= '0' and <= '9' ||
+               value == '_' ||
+               value == '-';
     }
 
     private static bool HasLiveOverlay(JsonElement overlaysElement)

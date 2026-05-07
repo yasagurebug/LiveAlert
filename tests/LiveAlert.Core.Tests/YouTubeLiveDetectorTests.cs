@@ -90,6 +90,48 @@ public sealed class YouTubeLiveDetectorTests
     }
 
     [Fact]
+    public async Task StreamsLockupLiveBadge_ReturnsLive()
+    {
+        var handler = new StubHandler(req =>
+        {
+            var url = req.RequestUri?.ToString() ?? string.Empty;
+            if (url.Contains("/streams", StringComparison.OrdinalIgnoreCase))
+            {
+                var html = """
+                           <script>
+                           var ytInitialData = {"contents":{"items":[{"richItemRenderer":{"content":{"lockupViewModel":{"thumbnailBadgeViewModel":{"text":"ライブ","badgeStyle":"THUMBNAIL_OVERLAY_BADGE_STYLE_LIVE"},"animationActivationTargetId":"LOCKUPLIVE1"}}}}]}};
+                           </script>
+                           """;
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(html)
+                };
+            }
+
+            if (url.Contains("watch?v=LOCKUPLIVE1", StringComparison.OrdinalIgnoreCase))
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("{\"isLiveNow\":true}")
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("<html></html>")
+            };
+        });
+        var client = new HttpClient(handler);
+        var detector = new YouTubeLiveDetector(client);
+        var alert = new AlertConfig { Url = "https://www.youtube.com/channel/UC123" };
+
+        var result = await detector.CheckLiveAsync(alert, CancellationToken.None);
+
+        Assert.True(result.IsLive);
+        Assert.Equal("LOCKUPLIVE1", result.VideoId);
+    }
+
+    [Fact]
     public async Task HandlerThrows_ReturnsError()
     {
         var handler = new StubHandler(_ => throw new HttpRequestException("boom"));

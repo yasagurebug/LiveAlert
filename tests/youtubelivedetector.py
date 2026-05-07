@@ -5,11 +5,7 @@ import sys
 import urllib.request
 
 IS_LIVE_RE = re.compile(r'"isLiveNow":(true|false)')
-LIVE_NOW_WINDOW = 400
-LIVE_VIDEO_ID_PATTERNS = (
-    re.compile(r'"videoId":"([A-Za-z0-9_-]{11})".{0,%d}?"LIVE_NOW"' % LIVE_NOW_WINDOW, re.S),
-    re.compile(r'"LIVE_NOW".{0,%d}?"videoId":"([A-Za-z0-9_-]{11})"' % LIVE_NOW_WINDOW, re.S),
-)
+VIDEO_ID_IN_STRING_RE = re.compile(r'(?:/vi/|[?&]v=)([A-Za-z0-9_-]{11})')
 YT_INITIAL_DATA_RE = re.compile(r"var ytInitialData\s*=\s*(\{.*?\});", re.S)
 
 
@@ -49,6 +45,76 @@ def build_streams_url(url: str) -> str:
     return base + "/streams"
 
 
+def is_video_id(value: str) -> bool:
+    return len(value) == 11 and all(
+        "A" <= c <= "Z" or "a" <= c <= "z" or "0" <= c <= "9" or c in "_-"
+        for c in value
+    )
+
+
+def extract_video_id_from_string(value: str | None) -> str | None:
+    if not value:
+        return None
+    if is_video_id(value):
+        return value
+    match = VIDEO_ID_IN_STRING_RE.search(value)
+    return match.group(1) if match else None
+
+
+def is_live_thumbnail_badge(obj: dict) -> bool:
+    style = obj.get("badgeStyle")
+    if isinstance(style, str) and style.lower() == "thumbnail_overlay_badge_style_live":
+        return True
+
+    text = obj.get("text")
+    return isinstance(text, str) and "ライブ" in text
+
+
+def has_live_badge(obj) -> bool:
+    if isinstance(obj, dict):
+        badge = obj.get("thumbnailBadgeViewModel")
+        if isinstance(badge, dict) and is_live_thumbnail_badge(badge):
+            return True
+        return any(has_live_badge(value) for value in obj.values())
+    if isinstance(obj, list):
+        return any(has_live_badge(value) for value in obj)
+    return False
+
+
+def find_video_id_reference(obj) -> str | None:
+    if isinstance(obj, dict):
+        for value in obj.values():
+            if isinstance(value, str):
+                video_id = extract_video_id_from_string(value)
+                if video_id:
+                    return video_id
+        for value in obj.values():
+            video_id = find_video_id_reference(value)
+            if video_id:
+                return video_id
+    elif isinstance(obj, list):
+        for value in obj:
+            video_id = find_video_id_reference(value)
+            if video_id:
+                return video_id
+    elif isinstance(obj, str):
+        return extract_video_id_from_string(obj)
+    return None
+
+
+def is_likely_video_item(obj: dict) -> bool:
+    return any(
+        key in obj
+        for key in (
+            "richItemRenderer",
+            "lockupViewModel",
+            "videoRenderer",
+            "gridVideoRenderer",
+            "compactVideoRenderer",
+        )
+    )
+
+
 def extract_live_video_id_from_initial_data(html: str) -> str | None:
     match = YT_INITIAL_DATA_RE.search(html)
     if not match:
@@ -78,9 +144,13 @@ def extract_live_video_id_from_initial_data(html: str) -> str | None:
                         else:
                             runs = text.get("runs") or []
                             label = "".join(r.get("text", "") for r in runs if isinstance(r, dict))
-                    if style == "LIVE" or "ライブ" in label:
+                    if (isinstance(style, str) and style.lower() == "live") or "ライブ" in label:
                         live_ids.append(video_id)
                         break
+            if is_likely_video_item(obj) and has_live_badge(obj):
+                video_id = find_video_id_reference(obj)
+                if video_id:
+                    live_ids.append(video_id)
             for value in obj.values():
                 walk(value)
         elif isinstance(obj, list):
@@ -95,10 +165,6 @@ def find_live_video_id(html: str) -> str | None:
     live_id = extract_live_video_id_from_initial_data(html)
     if live_id:
         return live_id
-    for pattern in LIVE_VIDEO_ID_PATTERNS:
-        match = pattern.search(html)
-        if match:
-            return match.group(1)
     return None
 
 
