@@ -110,7 +110,7 @@ internal static class ProcessExecutionHelper
             Directory.CreateDirectory(directory);
         }
 
-        File.WriteAllText(
+        File.AppendAllText(
             logPath,
             $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] command={fileName} arguments={arguments}{Environment.NewLine}",
             new UTF8Encoding(false));

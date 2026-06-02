@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using System.Management;
 
 namespace LiveAlert.Windows.Services;
@@ -43,6 +44,9 @@ public sealed class RecordingProcessController
         }
 
         return commandLine.Contains(context.TsPath, StringComparison.OrdinalIgnoreCase) ||
+               commandLine.Contains(Path.GetFileNameWithoutExtension(context.TsPath), StringComparison.OrdinalIgnoreCase) ||
+               commandLine.Contains(context.Mp4Path, StringComparison.OrdinalIgnoreCase) ||
+               commandLine.Contains(Path.GetFileNameWithoutExtension(context.Mp4Path), StringComparison.OrdinalIgnoreCase) ||
                commandLine.Contains(context.WatchUrl, StringComparison.OrdinalIgnoreCase) ||
                commandLine.Contains($"file:{context.TsPath}", StringComparison.OrdinalIgnoreCase);
     }

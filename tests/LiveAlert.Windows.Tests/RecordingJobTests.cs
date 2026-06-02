@@ -103,4 +103,40 @@ public sealed class RecordingJobTests
             }
         }
     }
+
+    [Fact]
+    public void BuildAttemptSegmentPath_UsesSeparateMp4PathPerAttempt()
+    {
+        var context = new RecordingJobContext(
+            "ALPHA",
+            "video123",
+            "https://www.youtube.com/watch?v=video123",
+            @"C:\Recordings\out.ts",
+            @"C:\Recordings\out.mp4",
+            @"C:\Recordings\out_ytdlp.log",
+            @"C:\Recordings\out_ffmpeg.log",
+            null);
+
+        Assert.Equal(@"C:\Recordings\out.segment001.mp4", RecordingJob.BuildAttemptSegmentPath(context, 1));
+        Assert.Equal(@"C:\Recordings\out.segment002.mp4", RecordingJob.BuildAttemptSegmentPath(context, 2));
+        Assert.Equal(@"C:\Recordings\out.segment010.mp4", RecordingJob.BuildAttemptSegmentPath(context, 10));
+    }
+
+    [Fact]
+    public void BuildAttemptOutputTemplate_UsesYtDlpExtensionPlaceholder()
+    {
+        var context = new RecordingJobContext(
+            "ALPHA",
+            "video123",
+            "https://www.youtube.com/watch?v=video123",
+            @"C:\Recordings\out.ts",
+            @"C:\Recordings\out.mp4",
+            @"C:\Recordings\out_ytdlp.log",
+            @"C:\Recordings\out_ffmpeg.log",
+            null);
+
+        Assert.Equal(@"C:\Recordings\out.segment001.%(ext)s", RecordingJob.BuildAttemptOutputTemplate(context, 1));
+        Assert.Equal(@"C:\Recordings\out.segment002.%(ext)s", RecordingJob.BuildAttemptOutputTemplate(context, 2));
+    }
+
 }

@@ -76,6 +76,8 @@ public sealed class RecordingJob
     public async Task RunAsync()
     {
         var retryCount = 0;
+        var attemptCount = 0;
+        var segmentPaths = new List<string>();
         while (true)
         {
             if (IsStopRequested())
@@ -85,7 +87,15 @@ public sealed class RecordingJob
             }
 
             _stateChanged(RecordingJobState.Recording);
-            var ytDlpResult = await RunYtDlpAsync().ConfigureAwait(false);
+            attemptCount++;
+            var outputTemplate = BuildAttemptOutputTemplate(_context, attemptCount);
+            var segmentPath = BuildAttemptSegmentPath(_context, attemptCount);
+            var ytDlpResult = await RunYtDlpAsync(outputTemplate).ConfigureAwait(false);
+            if (HasRecordedContent(segmentPath) && !segmentPaths.Contains(segmentPath, StringComparer.OrdinalIgnoreCase))
+            {
+                segmentPaths.Add(segmentPath);
+            }
+
             if (!ytDlpResult.Started)
             {
                 LogFailure("yt-dlp起動失敗", ytDlpResult);
@@ -99,7 +109,8 @@ public sealed class RecordingJob
             }
 
             if (ytDlpResult.ExitCode is not 0 &&
-                !HasRecordedContent(_context.TsPath) &&
+                !HasRecordedContent(segmentPath) &&
+                !HasAnyRecordedContent(segmentPaths) &&
                 IsNonRetriableYtDlpFailure(_context.YtDlpLogPath))
             {
                 LogFailure("yt-dlp視聴権限エラー", ytDlpResult);
@@ -123,20 +134,20 @@ public sealed class RecordingJob
 
             if (ytDlpResult.ExitCode is not 0)
             {
-                if (!HasRecordedContent(_context.TsPath))
+                if (!HasAnyRecordedContent(segmentPaths))
                 {
                     LogFailure("yt-dlp異常終了", ytDlpResult);
                     throw new InvalidOperationException($"yt-dlp exited with code {ytDlpResult.ExitCode}");
                 }
 
                 AppLog.Warn(
-                    $"Recording continuing to finalize label={_context.Label} videoId={_context.VideoId} exitCode={ytDlpResult.ExitCode} tsPath={_context.TsPath}");
+                    $"Recording continuing to finalize label={_context.Label} videoId={_context.VideoId} exitCode={ytDlpResult.ExitCode} segmentCount={segmentPaths.Count}");
             }
 
             break;
         }
 
-        if (!HasRecordedContent(_context.TsPath))
+        if (!HasAnyRecordedContent(segmentPaths))
         {
             if (IsStopRequested())
             {
@@ -151,31 +162,34 @@ public sealed class RecordingJob
         }
 
         _stateChanged(RecordingJobState.Finalizing);
-        var finalizerResult = _finalizer.FinalizeToMp4(_context, _cancellationToken);
+        var finalizerResult = _finalizer.FinalizeToMp4(_context, segmentPaths, _cancellationToken);
         if (!finalizerResult.Started || finalizerResult.ExitCode is not 0)
         {
             LogFailure("mp4マージ失敗", finalizerResult);
             throw new InvalidOperationException($"ffmpeg failed with code {finalizerResult.ExitCode}");
         }
 
-        try
+        foreach (var segmentPath in segmentPaths)
         {
-            if (File.Exists(_context.TsPath))
+            try
             {
-                File.Delete(_context.TsPath);
+                if (File.Exists(segmentPath))
+                {
+                    File.Delete(segmentPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLog.Warn($"Recording temporary file cleanup skipped path={segmentPath} reason={ex.Message}");
             }
         }
-        catch (Exception ex)
-        {
-            AppLog.Warn($"Recording temporary file cleanup skipped path={_context.TsPath} reason={ex.Message}");
-        }
 
-        AppLog.Info($"Recording finished label={_context.Label} videoId={_context.VideoId} output={_context.Mp4Path} success=true");
+        AppLog.Info($"Recording finished label={_context.Label} videoId={_context.VideoId} output={_context.Mp4Path} segmentCount={segmentPaths.Count} success=true");
     }
 
-    private async Task<ExternalProcessResult> RunYtDlpAsync()
+    private async Task<ExternalProcessResult> RunYtDlpAsync(string outputPath)
     {
-        var started = _ytDlpRunner.Start(_context);
+        var started = _ytDlpRunner.Start(_context, outputPath);
         if (!started.Started || started.Process is null)
         {
             return new ExternalProcessResult(false, null, string.Empty, string.Empty, _context.YtDlpLogPath, started.Exception);
@@ -198,7 +212,7 @@ public sealed class RecordingJob
                 .WaitForExitWithLoggingAsync(
                     started.Process,
                     "yt-dlp",
-                    YtDlpRunner.BuildArguments(_context),
+                    YtDlpRunner.BuildArguments(_context, outputPath),
                     _context.YtDlpLogPath,
                     _cancellationToken)
                 .ConfigureAwait(false);
@@ -216,6 +230,39 @@ public sealed class RecordingJob
                 _activeProcess = null;
             }
         }
+    }
+
+    internal static string BuildAttemptTsPath(RecordingJobContext context, int attempt)
+    {
+        return BuildAttemptSegmentPath(context, attempt);
+    }
+
+    internal static string BuildAttemptSegmentPath(RecordingJobContext context, int attempt)
+    {
+        var directory = Path.GetDirectoryName(context.TsPath) ?? string.Empty;
+        var fileName = Path.GetFileNameWithoutExtension(context.TsPath);
+        return Path.Combine(directory, $"{fileName}.segment{attempt:000}.mp4");
+    }
+
+    internal static string BuildAttemptOutputTemplate(RecordingJobContext context, int attempt)
+    {
+        var segmentPath = BuildAttemptSegmentPath(context, attempt);
+        var directory = Path.GetDirectoryName(segmentPath) ?? string.Empty;
+        var fileName = Path.GetFileNameWithoutExtension(segmentPath);
+        return Path.Combine(directory, $"{fileName}.%(ext)s");
+    }
+
+    internal static bool HasAnyRecordedContent(IReadOnlyList<string> segmentPaths)
+    {
+        foreach (var segmentPath in segmentPaths)
+        {
+            if (HasRecordedContent(segmentPath))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private async Task<bool> IsStillLiveAsync()
