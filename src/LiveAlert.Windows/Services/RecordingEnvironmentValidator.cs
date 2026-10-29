@@ -36,6 +36,12 @@ public sealed class RecordingEnvironmentValidator
             return new RecordingEnvironmentValidationResult(false, ffmpeg.Detail);
         }
 
+        var ffprobe = await _commandProbe.ProbeAsync("ffprobe", "-version", cancellationToken).ConfigureAwait(false);
+        if (!ffprobe.Success)
+        {
+            return new RecordingEnvironmentValidationResult(false, ffprobe.Detail);
+        }
+
         return new RecordingEnvironmentValidationResult(true, string.Empty);
     }
 }

@@ -91,15 +91,15 @@ public sealed class RecordingJob
             var outputTemplate = BuildAttemptOutputTemplate(_context, attemptCount);
             var segmentPath = BuildAttemptSegmentPath(_context, attemptCount);
             var ytDlpResult = await RunYtDlpAsync(outputTemplate).ConfigureAwait(false);
-            if (HasRecordedContent(segmentPath) && !segmentPaths.Contains(segmentPath, StringComparer.OrdinalIgnoreCase))
-            {
-                segmentPaths.Add(segmentPath);
-            }
-
             if (!ytDlpResult.Started)
             {
                 LogFailure("yt-dlp起動失敗", ytDlpResult);
                 throw new InvalidOperationException("yt-dlp start failed", ytDlpResult.Exception);
+            }
+
+            if (HasRecordedContent(segmentPath) || RecordingFinalizer.GetUnmergedMediaPaths(segmentPath).Count > 0)
+            {
+                segmentPaths.Add(segmentPath);
             }
 
             if (IsStopRequested())
@@ -110,7 +110,7 @@ public sealed class RecordingJob
 
             if (ytDlpResult.ExitCode is not 0 &&
                 !HasRecordedContent(segmentPath) &&
-                !HasAnyRecordedContent(segmentPaths) &&
+                segmentPaths.Count == 0 &&
                 IsNonRetriableYtDlpFailure(_context.YtDlpLogPath))
             {
                 LogFailure("yt-dlp視聴権限エラー", ytDlpResult);
@@ -134,7 +134,7 @@ public sealed class RecordingJob
 
             if (ytDlpResult.ExitCode is not 0)
             {
-                if (!HasAnyRecordedContent(segmentPaths))
+                if (segmentPaths.Count == 0)
                 {
                     LogFailure("yt-dlp異常終了", ytDlpResult);
                     throw new InvalidOperationException($"yt-dlp exited with code {ytDlpResult.ExitCode}");
@@ -145,6 +145,13 @@ public sealed class RecordingJob
             }
 
             break;
+        }
+
+        _stateChanged(RecordingJobState.Finalizing);
+        foreach (var segmentPath in segmentPaths)
+        {
+            if (!_finalizer.PrepareSegment(_context, segmentPath, _cancellationToken))
+                throw new InvalidDataException($"録画セグメントが見つかりません: {segmentPath}");
         }
 
         if (!HasAnyRecordedContent(segmentPaths))
@@ -161,7 +168,6 @@ public sealed class RecordingJob
             throw new InvalidOperationException("recording data was not created");
         }
 
-        _stateChanged(RecordingJobState.Finalizing);
         var finalizerResult = _finalizer.FinalizeToMp4(_context, segmentPaths, _cancellationToken);
         if (!finalizerResult.Started || finalizerResult.ExitCode is not 0)
         {
@@ -169,7 +175,9 @@ public sealed class RecordingJob
             throw new InvalidOperationException($"ffmpeg failed with code {finalizerResult.ExitCode}");
         }
 
-        foreach (var segmentPath in segmentPaths)
+        var temporaryPaths = segmentPaths.SelectMany(path =>
+            RecordingFinalizer.GetUnmergedMediaPaths(path).Append(path)).ToList();
+        foreach (var segmentPath in temporaryPaths)
         {
             try
             {
@@ -265,22 +273,23 @@ public sealed class RecordingJob
         return false;
     }
 
-    private async Task<bool> IsStillLiveAsync()
+    internal async Task<bool> IsStillLiveAsync()
     {
-        if (IsStopRequested())
+        while (!IsStopRequested())
         {
-            return false;
-        }
-
-        var result = await _liveDetector.CheckLiveAsync(
-            new AlertConfig
+            var result = await _liveDetector.CheckLiveAsync(
+                new AlertConfig { Label = _context.Label, Url = _context.WatchUrl },
+                _cancellationToken).ConfigureAwait(false);
+            if (!result.IsError)
             {
-                Label = _context.Label,
-                Url = _context.WatchUrl
-            },
-            _cancellationToken).ConfigureAwait(false);
+                return result.IsLive && string.Equals(result.VideoId, _context.VideoId, StringComparison.Ordinal);
+            }
 
-        return result.IsLive && string.Equals(result.VideoId, _context.VideoId, StringComparison.Ordinal);
+            AppLog.Warn($"Recording live check failed label={_context.Label} videoId={_context.VideoId} reason={result.ErrorMessage}");
+            _stateChanged(RecordingJobState.Retrying);
+            await Task.Delay(TimeSpan.FromSeconds(5), _cancellationToken).ConfigureAwait(false);
+        }
+        return false;
     }
 
     private bool IsStopRequested()

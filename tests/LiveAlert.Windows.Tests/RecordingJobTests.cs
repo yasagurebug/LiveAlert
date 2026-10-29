@@ -1,6 +1,9 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using LiveAlert.Core;
 using LiveAlert.Windows.Services;
 using Xunit;
 
@@ -139,4 +142,44 @@ public sealed class RecordingJobTests
         Assert.Equal(@"C:\Recordings\out.segment002.%(ext)s", RecordingJob.BuildAttemptOutputTemplate(context, 2));
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task LiveCheck_RetriesMonitoringErrorsBeforeReturningKnownState(bool live)
+    {
+        var calls = 0;
+        var detector = new Detector(() => ++calls == 1 ? LiveCheckResult.Error("test network failure") :
+            live ? LiveCheckResult.Live("test") : LiveCheckResult.NotLive());
+        var job = CreateJob(detector, CancellationToken.None);
+        Assert.Equal(live, await job.IsStillLiveAsync());
+        Assert.Equal(2, calls);
+    }
+
+    [Fact]
+    public async Task LiveCheck_CancellationWhileUnknownDoesNotBecomeNotLive()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var detector = new Detector(() =>
+        {
+            cancellation.Cancel();
+            return LiveCheckResult.Error("test network failure");
+        });
+        var job = CreateJob(detector, cancellation.Token);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => job.IsStillLiveAsync());
+    }
+
+    private static RecordingJob CreateJob(ILiveDetector detector, CancellationToken token)
+    {
+        var context = new RecordingJobContext("TEST", "test", "https://www.youtube.com/watch?v=test",
+            "unused.ts", "unused.mp4", "unused-ytdlp.log", "unused-ffmpeg.log", null);
+        return new RecordingJob(context, new YtDlpRunner(), new RecordingFinalizer(), detector,
+            new RecordingProcessController(), _ => { }, () => { }, token);
+    }
+
+    private sealed class Detector : ILiveDetector
+    {
+        private readonly Func<LiveCheckResult> _check;
+        public Detector(Func<LiveCheckResult> check) => _check = check;
+        public Task<LiveCheckResult> CheckLiveAsync(AlertConfig alert, CancellationToken token) => Task.FromResult(_check());
+    }
 }

@@ -65,8 +65,8 @@ LiveAlert は、YouTube ライブ配信の開始をポーリングで監視し�
 - labelが特定の文字列の時に発生するイベントがあります。
 
 7) ライブ録画機能
-- ライブ開始時に、yt-dlpとffmpegを使って録画を行います。
-- yt-dlpとffmpegがパスの通った場所に置かれている必要があります。
+- ライブ開始時に、yt-dlpとffmpegを使って録画を行い、ffprobeで録画ファイルを確認します。
+- yt-dlp、ffmpeg、ffprobeがパスの通った場所に置かれている必要があります。ffprobeはffmpegの配布物に同梱されています。
 - yt-dlp https://github.com/yt-dlp/yt-dlp/releases
 - ffmpeg https://ffmpeg.org/download.html#build-windows
 - 録画先のフォルダは、！！！30日経過したファイルを自動削除！！！します。

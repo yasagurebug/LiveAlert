@@ -151,7 +151,7 @@ internal static class ProcessExecutionHelper
         {
             File.AppendAllText(
                 logPath,
-                $"[{streamName}] {line}{Environment.NewLine}",
+                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{streamName}] {line}{Environment.NewLine}",
                 new UTF8Encoding(false));
         }
     }

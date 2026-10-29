@@ -4,6 +4,12 @@ namespace LiveAlert.Windows.Services;
 
 public sealed class YtDlpRunner
 {
+    private readonly Func<string, string, ExternalProcessStartResult> _start;
+
+    public YtDlpRunner() : this(ProcessExecutionHelper.Start) { }
+
+    internal YtDlpRunner(Func<string, string, ExternalProcessStartResult> start) => _start = start;
+
     public ExternalProcessStartResult Start(RecordingJobContext context)
     {
         return Start(context, context.TsPath);
@@ -12,7 +18,7 @@ public sealed class YtDlpRunner
     public ExternalProcessStartResult Start(RecordingJobContext context, string outputPath)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(context.TsPath) ?? ".");
-        return ProcessExecutionHelper.Start("yt-dlp", BuildArguments(context, outputPath));
+        return _start("yt-dlp", BuildArguments(context, outputPath));
     }
 
     internal static string BuildArguments(RecordingJobContext context)
