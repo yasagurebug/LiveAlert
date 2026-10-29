@@ -2,6 +2,11 @@
 
 YouTube のライブ開始をポーリングで検知し、警告帯と音声/BGM で知らせるアプリです。Android 版は X（旧Twitter）の Space 通知検知にも対応し、Windows 版は YouTube 専用です。
 
+## ダウンロード（各プラットフォームの最新正式版）
+
+- [Windows版 0.3.7](https://github.com/yasagurebug/LiveAlert/releases/tag/0.3.7_windows)
+- [Android版 0.13.3](https://github.com/yasagurebug/LiveAlert/releases/tag/v0_13_3_android)
+
 # 主要ポイント
 - YouTube: 公開ページのポーリング検知（公式 API 不使用）
 - EVA 風の警告帯オーバーレイ + 音声/BGM
@@ -18,7 +23,7 @@ YouTube のライブ開始をポーリングで検知し、警告帯と音声/BG
 
 ## Windows版のインストールと録画設定
 
-[Windows版リリース](https://github.com/yasagurebug/LiveAlert/releases)からインストーラを取得してください。録画には別途yt-dlp・ffmpeg・ffprobeが必要です（通知のみなら不要）。
+[Windows版の最新正式版](https://github.com/yasagurebug/LiveAlert/releases/tag/0.3.7_windows)からインストーラを取得してください。録画には別途yt-dlp・ffmpeg・ffprobeが必要です（通知のみなら不要）。
 
 導入方法と、録画に失敗した場合の確認先は[Windows版の録画設定とトラブル対処](docs/windows-recording.md)にまとめています。bgutilの補修は、同ページに記載したタイムアウトが発生する環境だけが対象です。
 
