@@ -1,6 +1,7 @@
 param(
     [Parameter(Mandatory = $true)]
-    [string]$ModulePath
+    [string]$ModulePath,
+    [switch]$Restore
 )
 
 $ErrorActionPreference = 'Stop'
@@ -30,12 +31,14 @@ $replacement = @'
             return False
 '@ -replace "`r?`n", $newline
 
-if ($source.Contains($replacement)) {
-    Write-Output 'bgutil timeout fix is already applied.'
+$from = if ($Restore) { $replacement } else { $original }
+$to = if ($Restore) { $original } else { $replacement }
+if ($source.Contains($to) -and -not $source.Contains($from)) {
+    Write-Output $(if ($Restore) { 'bgutil timeout fix is not applied; no changes made.' } else { 'bgutil timeout fix is already applied.' })
     return
 }
-if (($source.Split(@($original), [StringSplitOptions]::None).Count - 1) -ne 1) {
+if (($source.Split(@($from), [StringSplitOptions]::None).Count - 1) -ne 1) {
     throw 'Unsupported bgutil source; no changes were made.'
 }
-[IO.File]::WriteAllText($resolvedPath, $source.Replace($original, $replacement), $encoding)
-Write-Output "Applied bgutil timeout fix: $resolvedPath"
+[IO.File]::WriteAllText($resolvedPath, $source.Replace($from, $to), $encoding)
+Write-Output $(if ($Restore) { "Restored bgutil timeout check: $resolvedPath" } else { "Applied bgutil timeout fix: $resolvedPath" })

@@ -69,9 +69,14 @@ LiveAlert は、YouTube ライブ配信の開始をポーリングで監視し�
 - yt-dlp、ffmpeg、ffprobeがパスの通った場所に置かれている必要があります。ffprobeはffmpegの配布物に同梱されています。
 - yt-dlp https://github.com/yt-dlp/yt-dlp/releases
 - ffmpeg https://ffmpeg.org/download.html#build-windows
+- 導入手順と、録画に失敗した場合の対処:
+  https://github.com/yasagurebug/LiveAlert/blob/main/docs/windows-recording.md
+  上のURLをコピーしてブラウザーで開いてください。
+- bgutilは、一部のYouTube通信で必要となるPOトークンを生成するyt-dlp用の追加プラグインです。LiveAlertには同梱していません。
+- bgutilの補修が必要なのは、generate_once.ts / generate_once.js の --version が15秒でタイムアウトする環境だけです。導入していない場合や、この症状がない場合は補修不要です。対象の確認・適用・元に戻す方法は上の対処ページを参照してください。
 - 録画先のフォルダは、！！！30日経過したファイルを自動削除！！！します。
 - そのため、他のファイルが混ざらないフォルダを指定してください。
-- 録画終了または停止時に、tsファイルはmp4に変換されます。
+- 録画終了または停止時に、取得した映像・音声を完成MP4にまとめます。
 - yt-dlpはyoutubeの仕様変更に合わせ頻繁にアップデートされますので、定期的に yt-dlp -U を行ってアップデートを行うのをお勧めします。
 - 保存日数は 設定ファイル（JSON）の recordingRetentionDays で変更できます（LiveAlertの再起動が必要です）
 

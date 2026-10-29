@@ -16,6 +16,12 @@ YouTube のライブ開始をポーリングで検知し、警告帯と音声/BG
 - イースターエッグ機能
 - ライブ録画機能
 
+## Windows版のインストールと録画設定
+
+[Windows版リリース](https://github.com/yasagurebug/LiveAlert/releases)からインストーラを取得してください。録画には別途yt-dlp・ffmpeg・ffprobeが必要です（通知のみなら不要）。
+
+導入方法と、録画に失敗した場合の確認先は[Windows版の録画設定とトラブル対処](docs/windows-recording.md)にまとめています。bgutilの補修は、同ページに記載したタイムアウトが発生する環境だけが対象です。
+
 # Android版特有の機能
 
 - X Spaceの通知を検知する機能
@@ -56,3 +62,4 @@ YouTube のライブ開始をポーリングで検知し、警告帯と音声/BG
 - 2026/05/07  Windows v0.3.4  youtubeの仕様変更に追従
 - 2026/06/02  Windows v0.3.5  ライブ録画の安定性を改善
 - 2026/10/29  Windows v0.3.6  録画異常終了時の未結合データ回収と配信終了判定を改善
+- 2026/10/29  Windows v0.3.7  録画設定・トラブル対処の公開手順とbgutil補修の復元操作を追加

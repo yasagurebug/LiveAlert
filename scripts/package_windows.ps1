@@ -82,6 +82,26 @@ if ($LASTEXITCODE -ne 0) {
     throw 'Inno Setup compilation failed.'
 }
 
+$outputDirectory = Join-Path $repoRoot 'installer\output'
+$helpDirectory = Join-Path $outputDirectory ('.recording-help-' + [Guid]::NewGuid().ToString('N'))
+try {
+    New-Item -ItemType Directory -Path (Join-Path $helpDirectory 'docs'), (Join-Path $helpDirectory 'scripts') | Out-Null
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'docs\windows-recording.md') -Destination (Join-Path $helpDirectory 'docs\windows-recording.md')
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts\fix_bgutil_timeout.ps1') -Destination (Join-Path $helpDirectory 'scripts\fix_bgutil_timeout.ps1')
+    $helpZip = Join-Path $outputDirectory ("LiveAlert-Windows-Recording-Help-{0}.zip" -f $version)
+    Compress-Archive -Path (Join-Path $helpDirectory '*') -DestinationPath $helpZip -Force
+} finally {
+    if (Test-Path -LiteralPath $helpDirectory) {
+        $resolvedHelpDirectory = (Resolve-Path -LiteralPath $helpDirectory).Path
+        $resolvedOutputDirectory = (Resolve-Path -LiteralPath $outputDirectory).Path
+        if (-not $resolvedHelpDirectory.StartsWith($resolvedOutputDirectory + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+            throw 'Unexpected help staging directory.'
+        }
+        Remove-Item -LiteralPath $resolvedHelpDirectory -Recurse -Force
+    }
+}
+
 Write-Host "Installer created from: $PublishDir"
 Write-Host "Output directory: $(Join-Path (Split-Path $installerScript -Parent) 'output')"
+Write-Host "Recording help: $helpZip"
 Write-Host 'If .NET 8 Desktop Runtime is missing, the installer downloads and installs it automatically.'
